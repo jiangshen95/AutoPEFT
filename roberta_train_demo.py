@@ -1,5 +1,7 @@
 # 导入必要的库和函数
 # 用于加载和处理序列到序列的语言模型
+import re
+from torch.nn.parameter import Parameter
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 from transformers import AutoModelForSeq2SeqLM, AutoModelForSequenceClassification
@@ -137,12 +139,14 @@ def get_trainable_parameters(model):
     return names
 
 
-def group_parameters_by_prefix(names, print_names=False):
+def group_parameters_by_prefix(names, opt='', print_names=False):
     groups = {}
-    names = [name for name in names if task_name in name and 'head' not in name]
+    names = [
+        name for name in names if task_name in name and 'head' not in name and opt in name]
     for name in names:
         # 分割参数名，获取前缀
         prefix = name.split(task_name)[0]
+        prefix = prefix.replace('query.', '').replace('value.', '')
         # 如果前缀已经在字典中，就将参数名添加到对应的列表中
         if prefix in groups:
             groups[prefix].append(name)
@@ -160,6 +164,7 @@ def group_parameters_by_prefix(names, print_names=False):
 def find_group_with_most_small_values(groups, model):
     max_small_values = 0
     max_group = None
+    max_names = []
     for group, names in groups.items():
         num_small_values = 0
         for name in names:
@@ -169,7 +174,8 @@ def find_group_with_most_small_values(groups, model):
         if num_small_values > max_small_values:
             max_small_values = num_small_values
             max_group = group
-    return max_group, max_small_values
+            max_names = names
+    return max_group, max_names, max_small_values
 
 
 def plot_small_value_ratios(groups, model):
@@ -211,18 +217,54 @@ def plot_total_parameters(groups, model):
     plt.show()
 
 
+def set_weights_to_zero_and_untrainable(group, model):
+    for name in group:
+        # 获取权重
+        weights = model.state_dict()[name]
+        # 将权重设置为全 0
+        weights.zero_()
+        # 将修改后的权重重新赋值给模型中的对应模块
+
+        name = re.sub(r'\.(\d+)', r'[\1]', name)
+        exec('model.'+name+'= Parameter(data=weights, requires_grad=False)')
+
+
+def reinitialize_trainable_parameters(model):
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            if len(param.shape) == 1:  # bias
+                torch.nn.init.zeros_(param)
+            else:  # weights
+                torch.nn.init.xavier_uniform_(param)
+
+
 for i in range(5):
     # 剪枝训练循环
-    train_epoch(1)
+    train_epoch(5)
+
+    # 删除lora
     names = get_trainable_parameters(model)
-    groups = group_parameters_by_prefix(names, print_names=False)
-    max_group, max_small_values = find_group_with_most_small_values(
+    groups = group_parameters_by_prefix(names, opt='lora', print_names=False)
+    max_group, max_names, max_small_values = find_group_with_most_small_values(
         groups, model)
     print(
         f"The group with the most weights less than 0.001 is {max_group} with {max_small_values} such weights.")
     plot_small_value_ratios(groups, model)
-    plot_total_parameters(groups, model)
+    # plot_total_parameters(groups, model)
+    set_weights_to_zero_and_untrainable(max_names, model)
 
+    # 删除adapter
+    names = get_trainable_parameters(model)
+    groups = group_parameters_by_prefix(
+        names, opt='adapter', print_names=False)
+    max_group, max_names, max_small_values = find_group_with_most_small_values(
+        groups, model)
+    print(
+        f"The group with the most weights less than 0.001 is {max_group} with {max_small_values} such weights.")
+    plot_small_value_ratios(groups, model)
+    # plot_total_parameters(groups, model)
+    set_weights_to_zero_and_untrainable(max_names, model)
 
-# print(groups)
-# train_epoch(1)
+    # 重新初始化可训练参数
+    model.init_weights()
+    reinitialize_trainable_parameters(model)
