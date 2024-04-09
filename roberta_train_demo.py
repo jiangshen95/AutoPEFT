@@ -266,5 +266,5 @@ for i in range(5):
     set_weights_to_zero_and_untrainable(max_names, model)
 
     # 重新初始化可训练参数
-    model.init_weights()
-    reinitialize_trainable_parameters(model)
+    # TODO
+    # reinitialize_trainable_parameters(model)
