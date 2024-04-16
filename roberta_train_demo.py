@@ -240,11 +240,11 @@ def reinitialize_trainable_parameters(model):
 
 for i in range(5):
     # 剪枝训练循环
-    train_epoch(5)
+    train_epoch(1)
 
     # 删除lora
     names = get_trainable_parameters(model)
-    groups = group_parameters_by_prefix(names, opt='lora', print_names=False)
+    groups = group_parameters_by_prefix(names, opt='lora', print_names=True)
     max_group, max_names, max_small_values = find_group_with_most_small_values(
         groups, model)
     print(
@@ -266,5 +266,5 @@ for i in range(5):
     set_weights_to_zero_and_untrainable(max_names, model)
 
     # 重新初始化可训练参数
-    model.init_weights()
-    reinitialize_trainable_parameters(model)
+    # TODO
+    # reinitialize_trainable_parameters(model)
