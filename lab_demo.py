@@ -1,5 +1,6 @@
 # 导入必要的库和函数
 # 用于加载和处理序列到序列的语言模型
+import logging
 import re
 from torch.nn.parameter import Parameter
 import matplotlib.pyplot as plt
@@ -30,7 +31,7 @@ def print_trainable_parameters(model):
         all_param += param.numel()
         if param.requires_grad:
             trainable_params += param.numel()
-    print(
+    logger.info(
         f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param:.2f}"
     )
 
@@ -57,12 +58,12 @@ def get_dataset(name, model):
         model.add_classification_head(name, num_labels=num_labels)
         model = model.to(device)
     else:
-        print("No test dataset available for this task.")
+        logger.info("No test dataset available for this task.")
 
 
 def preprocessing(task_name):
     global device, dataset, model, tokenizer, train_dataloader, valid_dataloader, optimizer, scheduler, loss_fn
-    print("Start Preprocessing...")
+    logger.info("Start Preprocessing...")
     # 定义一些参数
     model_name_or_path = "roberta-base"
     output_dir = "out/"
@@ -107,23 +108,23 @@ def preprocessing(task_name):
 
     # 定义训练和验证的数据加载器
     train_dataloader = DataLoader(
-        dataset['train'], batch_size=1, shuffle=True)
+        dataset['train'], batch_size=64, shuffle=True)
     valid_dataloader = DataLoader(
-        dataset['test'], batch_size=1, shuffle=False)
+        dataset['test'], batch_size=64, shuffle=False)
 
     # 定义优化器和学习率调度器
-    optimizer = AdamW(model.parameters(), lr=1e-5)
+    optimizer = AdamW(model.parameters(), lr=1e-3)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=0, num_training_steps=len(train_dataloader) * 3)
 
     # 定义损失函数
     loss_fn = CrossEntropyLoss()
-    print("Start training...")
+    logger.info("Start training...")
 
 
 def train_epoch(epoch_num):
     # 重置优化器
-    optimizer = AdamW(model.parameters(), lr=1e-5)
+    optimizer = AdamW(model.parameters(), lr=1e-3)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=0, num_training_steps=len(train_dataloader) * 3)
     # 开始训练
@@ -166,14 +167,15 @@ def train_epoch(epoch_num):
                 total_loss += loss.item()
                 total_correct += (outputs.logits.argmax(dim=-1)
                                   == batch['label']).sum().item()
-        print(f'Epoch {epoch+1} || Validation loss: {total_loss/total_count:.6f} || Validation accuracy: {total_correct/total_count:.6f}')
+        logger.info(
+            f'Epoch {epoch+1} || Validation loss: {total_loss/total_count:.6f} || Validation accuracy: {total_correct/total_count:.6f}')
 
 
 def get_trainable_parameters(model):
     names = []
     for name, param in model.named_parameters():
         if param.requires_grad:
-            # print(name)
+            # logger.info(name)
             names.append(name)
     return names
 
@@ -194,9 +196,9 @@ def group_parameters_by_prefix(names, task_name, opt='', print_names=False):
             groups[prefix] = [name]
     if print_names:
         for prefix, names in groups.items():
-            print(f"{prefix}:")
+            logger.info(f"{prefix}:")
             for name in names:
-                print(f"  {name}")
+                logger.info(f"  {name}")
     return groups
 
 
@@ -278,10 +280,33 @@ def reinitialize_trainable_parameters(model):
 
 
 if __name__ == '__main__':
-    task_names = ['axb', 'axg']
+
+    # 创建一个日志记录器
+    logger = logging.getLogger('lab')
+    logger.setLevel(logging.INFO)  # 设置日志级别
+
+    # 创建一个文件处理器，将日志写入到文件中
+    file_handler = logging.FileHandler('output.log', mode='w')
+    file_handler.setLevel(logging.INFO)
+
+    # 创建一个格式器，定义日志的格式
+    formatter = logging.Formatter(
+        '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+
+    # 将文件处理器添加到日志记录器中
+    logger.addHandler(file_handler)
+
+    task_names = ['axb', 'axg', 'boolq', 'cb', 'copa',
+                  'multirc', 'record', 'rte', 'wic', 'wsc']
+    # task_names = ['cb', 'copa',
+    #   'multirc', 'record', 'rte', 'wic', 'wsc']
     for task in task_names:
+        model = None
+        dataset = None
+        torch.cuda.empty_cache()
         preprocessing(task)
-        print('Task:', task)
+        logger.info(f'Task:{task}')
         for i in range(5):
             # 剪枝训练循环
             train_epoch(1)
@@ -292,7 +317,7 @@ if __name__ == '__main__':
             #     names, task, opt='lora', print_names=True)
             # max_group, max_names, max_small_values = find_group_with_most_small_values(
             #     groups, model)
-            # print(
+            # logger.info(
             #     f"The group with the most weights less than 0.001 is {max_group} with {max_small_values} such weights.")
             # plot_small_value_ratios(groups, model)
             # # plot_total_parameters(groups, model)
@@ -304,7 +329,7 @@ if __name__ == '__main__':
             #     names, task, opt='adapter', print_names=False)
             # max_group, max_names, max_small_values = find_group_with_most_small_values(
             #     groups, model)
-            # print(
+            # logger.info(
             #     f"The group with the most weights less than 0.001 is {max_group} with {max_small_values} such weights.")
             # plot_small_value_ratios(groups, model)
             # # plot_total_parameters(groups, model)
