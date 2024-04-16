@@ -1,63 +1,82 @@
 import torch
+import re
+from torch.nn.parameter import Parameter
 
-# 统计并排序模型中每层LoRA矩阵中0的个数
-def count_and_sort_zeros_in_qkv_lora(model):
-    layer_zero_counts = {}  # 初始化一个字典来存储每层的0计数
-    for name, param in model.named_parameters():  # 遍历模型的所有参数
-        # 仅处理包含LoRA参数的层（query, key, value）
-        if "loras" in name and ("query" in name or "key" in name or "value" in name):
-            layer_num = name.split('.')[3]  # 提取层编号
-            zero_count = (param == 0).sum().item()  # 计算当前参数中0的个数
-            # 累加当前层的0计数
-            if layer_num in layer_zero_counts:
-                layer_zero_counts[layer_num] += zero_count
-            else:
-                layer_zero_counts[layer_num] = zero_count
-    # 根据0的个数对层进行排序
-    sorted_zero_counts = sorted(layer_zero_counts.items(), key=lambda x: x[1], reverse=True)
-    return sorted_zero_counts
+def get_trainable_parameters(model):
+    names = []
+    for name, param in model.named_parameters():
+        if param.requires_grad:
+            # print(name)
+            names.append(name)
+    return names
 
-# 统计并排序模型中每层LoRA矩阵中小于给定阈值的值的个数
-def count_and_sort_values_below_threshold_in_qkv_lora(model, threshold):
-    layer_value_counts = {}  # 初始化一个字典来存储每层的小于阈值的值的计数
-    for name, param in model.named_parameters():  # 遍历模型的所有参数
-        # 仅处理包含LoRA参数的层（query, key, value）
-        if "loras" in name and ("query" in name or "key" in name or "value" in name):
-            layer_num = name.split('.')[3]  # 提取层编号
-            # 计算绝对值小于阈值的元素个数
-            value_count = (param.abs() < threshold).sum().item()
-            # 累加当前层的小于阈值的值的计数
-            if layer_num in layer_value_counts:
-                layer_value_counts[layer_num] += value_count
-            else:
-                layer_value_counts[layer_num] = value_count
-    # 根据小于阈值的值的个数对层进行排序
-    sorted_value_counts = sorted(layer_value_counts.items(), key=lambda x: x[1], reverse=True)
-    return sorted_value_counts
+def group_parameters_by_prefix(names, opts=[], print_names=False, task_name=''):
+    groups = {}
+    # 修改条件，确保name包含opts列表中的任一元素
+    names = [
+        name for name in names if task_name in name and 'head' not in name and any(opt in name for opt in opts)]
+    for name in names:
+        # 分割参数名，获取前缀
+        prefix = name.split(task_name)[0]
+        prefix = prefix.replace('query.', '').replace('value.', '')
+        # 如果前缀已经在字典中，就将参数名添加到对应的列表中
+        if prefix in groups:
+            groups[prefix].append(name)
+        # 否则，创建一个新的列表
+        else:
+            groups[prefix] = [name]
+    if print_names:
+        for prefix, names in groups.items():
+            print(f"{prefix}:")
+            for name in names:
+                print(f"  {name}")
+    return groups
 
-def calculate_and_sort_minimum_weight_in_qkv_lora(model):
-    layer_minimum_weights = {}  # 初始化一个字典来存储每层的最小权重
-    for name, param in model.named_parameters():  # 遍历模型的所有参数
-        # 仅处理包含LoRA参数的层（query, key, value）
-        if "loras" in name and ("query" in name or "key" in name or "value" in name):
-            layer_num = name.split('.')[3]  # 提取层编号
-            # 计算所有元素的平方和再除以元素个数
-            minimum_weight = (param.pow(2).sum() / param.numel()).item()
-            # 存储当前层的最小权重
-            layer_minimum_weights[layer_num] = minimum_weight
-    # 根据最小权重对层进行排序
-    sorted_minimum_weights = sorted(layer_minimum_weights.items(), key=lambda x: x[1], reverse=True)
-    return sorted_minimum_weights
+def find_group_with_most_small_values(groups, model, p_method, top_p=1):
+    group_values = []
+    if p_method == 'zeros':
+        for group, names in groups.items():
+            num_zeros = sum((model.state_dict()[name] == 0).sum().item() for name in names)
+            group_values.append((group, names, num_zeros))
+    elif p_method == 'values_below_threshold':
+        threshold = 0.001  # 可以根据需要调整阈值
+        for group, names in groups.items():
+            num_values_below_threshold = sum((model.state_dict()[name].abs() < threshold).sum().item() for name in names)
+            group_values.append((group, names, num_values_below_threshold))
+    elif p_method == 'minimum_weight':
+        for group, names in groups.items():
+            min_weight = min((model.state_dict()[name].pow(2).sum() / model.state_dict()[name].numel()).item() for name in names)
+            group_values.append((group, names, min_weight))
 
-# 将0数量最多的层中的Q、K、V矩阵中的LoRA置0，并且将该层设为不可训练
-def zero_out_top_lora_layer(model, sorted_zero_counts):
-    if not sorted_zero_counts:  # 如果没有层需要处理，则直接返回
-        print("No layers to process.")
-        return
-    top_layer_num = sorted_zero_counts[0][0]  # 获取0数量最多的层的编号
-    for name, param in model.named_parameters():  # 遍历模型的所有参数
-        # 仅处理目标层的LoRA参数（query, key, value）
-        if f"layer.{top_layer_num}" in name and "loras" in name and ("query" in name or "key" in name or "value" in name):
-            with torch.no_grad():  # 修改参数时不计算梯度
-                param.zero_()  # 将参数全部置为0
-            param.requires_grad = False  # 设置为不可训练
+    # 根据第三个元素（即计数或权重）对group_values列表进行排序，然后选择前top_p个
+    sorted_groups = sorted(group_values, key=lambda x: x[2], reverse=(p_method != 'minimum_weight'))[:top_p]
+
+    # 返回前top_p个组的信息，每个元素是一个元组(group, names, value)
+    return sorted_groups
+
+def set_weights_to_zero_and_untrainable(groups, model):
+    for group_info in groups:
+        _, names, _ = group_info
+        for name in names:
+            # 获取权重
+            weights = model.state_dict()[name]
+            # 将权重设置为全 0
+            weights.zero_()
+            # 将修改后的权重重新赋值给模型中的对应模块
+            name = re.sub(r'\.(\d+)', r'[\1]', name)
+            exec('model.'+name+' = Parameter(data=weights, requires_grad=False)', globals(), locals())
+
+def prune_model(model, task_name='', opts=['lora'], p_method='zeros', top_p=1, print_names=False):
+    # 获取模型的可训练参数名
+    names = get_trainable_parameters(model)
+    # 根据前缀分组参数
+    groups = group_parameters_by_prefix(names, opts=opts, print_names=print_names, task_name=task_name)
+    # 找到最适合剪枝的参数组
+    sorted_groups = find_group_with_most_small_values(groups, model, p_method, top_p)
+    # 将找到的参数组的权重设置为0并设为不可训练
+    set_weights_to_zero_and_untrainable(sorted_groups, model)
+    # 打印剪枝后的信息，可选
+    if print_names:
+        for group_info in sorted_groups:
+            group, _, small_values = group_info
+            print(f"Pruned group: {group}, with {small_values} small values.")
