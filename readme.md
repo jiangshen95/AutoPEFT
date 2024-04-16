@@ -11,6 +11,5 @@ Hello AutoPEFT!
 - 实现架构搜索模块
 
 ## TODO
-- 把找名字函数放到pruning里
-- 剪枝函数放到pruning里
-- 在剪枝里放不同PEFT的实现
+- prefix-tuning
+- verbose
