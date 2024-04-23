@@ -104,7 +104,7 @@ def preprocessing(task_name):
     model = model.to(device)
 
     print_trainable_parameters(model)
-    dataset = dataset['test'].train_test_split(test_size=0.2)
+    dataset = dataset['test'].train_test_split(test_size=0.5)
 
     # 定义训练和验证的数据加载器
     train_dataloader = DataLoader(
@@ -113,7 +113,7 @@ def preprocessing(task_name):
         dataset['test'], batch_size=64, shuffle=False)
 
     # 定义优化器和学习率调度器
-    optimizer = AdamW(model.parameters(), lr=1e-3)
+    optimizer = AdamW(model.parameters(), lr=1e-5)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=0, num_training_steps=len(train_dataloader) * 3)
 
@@ -124,7 +124,7 @@ def preprocessing(task_name):
 
 def train_epoch(epoch_num):
     # 重置优化器
-    optimizer = AdamW(model.parameters(), lr=1e-3)
+    optimizer = AdamW(model.parameters(), lr=1e-5)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=0, num_training_steps=len(train_dataloader) * 3)
     # 开始训练
@@ -307,39 +307,12 @@ if __name__ == '__main__':
         torch.cuda.empty_cache()
         preprocessing(task)
         logger.info(f'Task:{task}')
-        for i in range(5):
+        for i in range(11):
             # 剪枝训练循环
-            train_epoch(1)
-
-            # 删除lora
-            # names = get_trainable_parameters(model)
-            # groups = group_parameters_by_prefix(
-            #     names, task, opt='lora', print_names=True)
-            # max_group, max_names, max_small_values = find_group_with_most_small_values(
-            #     groups, model)
-            # logger.info(
-            #     f"The group with the most weights less than 0.001 is {max_group} with {max_small_values} such weights.")
-            # plot_small_value_ratios(groups, model)
-            # # plot_total_parameters(groups, model)
-            # set_weights_to_zero_and_untrainable(max_names, model)
-
-            # # 删除adapter
-            # names = get_trainable_parameters(model)
-            # groups = group_parameters_by_prefix(
-            #     names, task, opt='adapter', print_names=False)
-            # max_group, max_names, max_small_values = find_group_with_most_small_values(
-            #     groups, model)
-            # logger.info(
-            #     f"The group with the most weights less than 0.001 is {max_group} with {max_small_values} such weights.")
-            # plot_small_value_ratios(groups, model)
-            # # plot_total_parameters(groups, model)
-            # set_weights_to_zero_and_untrainable(max_names, model)
-
-            # 重新初始化可训练参数
-            # TODO
-            # reinitialize_trainable_parameters(model)
+            train_epoch(3)
 
             prune_model(model, task_name=task, opts=[
-                        'lora'], p_method='values_below_threshold', top_p=1, print_names=True)
+                        'lora'], p_method='minimum_weight', top_p=1, print_names=True)
             prune_model(model, task_name=task, opts=[
-                        'adapter'], p_method='values_below_threshold', top_p=1, print_names=True)
+                        'adapter'], p_method='minimum_weight', top_p=1, print_names=True)
+            reinitialize_trainable_parameters(model)

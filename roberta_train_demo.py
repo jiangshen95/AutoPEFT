@@ -240,30 +240,30 @@ def reinitialize_trainable_parameters(model):
 
 for i in range(5):
     # 剪枝训练循环
-    train_epoch(1)
+    train_epoch(5)
 
     # 删除lora
-    names = get_trainable_parameters(model)
-    groups = group_parameters_by_prefix(names, opt='lora', print_names=True)
-    max_group, max_names, max_small_values = find_group_with_most_small_values(
-        groups, model)
-    print(
-        f"The group with the most weights less than 0.001 is {max_group} with {max_small_values} such weights.")
-    plot_small_value_ratios(groups, model)
-    # plot_total_parameters(groups, model)
-    set_weights_to_zero_and_untrainable(max_names, model)
+    # names = get_trainable_parameters(model)
+    # groups = group_parameters_by_prefix(names, opt='lora', print_names=True)
+    # max_group, max_names, max_small_values = find_group_with_most_small_values(
+    #     groups, model)
+    # print(
+    #     f"The group with the most weights less than 0.001 is {max_group} with {max_small_values} such weights.")
+    # plot_small_value_ratios(groups, model)
+    # # plot_total_parameters(groups, model)
+    # set_weights_to_zero_and_untrainable(max_names, model)
 
-    # 删除adapter
-    names = get_trainable_parameters(model)
-    groups = group_parameters_by_prefix(
-        names, opt='adapter', print_names=False)
-    max_group, max_names, max_small_values = find_group_with_most_small_values(
-        groups, model)
-    print(
-        f"The group with the most weights less than 0.001 is {max_group} with {max_small_values} such weights.")
-    plot_small_value_ratios(groups, model)
-    # plot_total_parameters(groups, model)
-    set_weights_to_zero_and_untrainable(max_names, model)
+    # # 删除adapter
+    # names = get_trainable_parameters(model)
+    # groups = group_parameters_by_prefix(
+    #     names, opt='adapter', print_names=False)
+    # max_group, max_names, max_small_values = find_group_with_most_small_values(
+    #     groups, model)
+    # print(
+    #     f"The group with the most weights less than 0.001 is {max_group} with {max_small_values} such weights.")
+    # plot_small_value_ratios(groups, model)
+    # # plot_total_parameters(groups, model)
+    # set_weights_to_zero_and_untrainable(max_names, model)
 
     # 重新初始化可训练参数
     # TODO

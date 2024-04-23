@@ -1,45 +1,125 @@
-2024-04-16 19:04:32,722 - lab - INFO - Start Preprocessing...
-2024-04-16 19:04:34,945 - lab - INFO - trainable params: 125288025 || all params: 125288025 || trainable%: 100.00
-2024-04-16 19:04:39,754 - lab - INFO - trainable params: 3308699 || all params: 127954331 || trainable%: 2.59
-2024-04-16 19:04:39,765 - lab - INFO - Start training...
-2024-04-16 19:04:39,765 - lab - INFO - Task:axb
-2024-04-16 19:04:42,165 - lab - INFO - Epoch 1 || Validation loss: 0.012390 || Validation accuracy: 0.574661
-2024-04-16 19:04:42,226 - lab - INFO - Pruned group: roberta.encoder.layer.3.attention.self.loras., with 50597 small values.
-2024-04-16 19:04:42,280 - lab - INFO - Pruned group: roberta.encoder.layer.1.output.adapters., with 3819 small values.
-2024-04-16 19:04:44,514 - lab - INFO - Epoch 1 || Validation loss: 0.012365 || Validation accuracy: 0.574661
-2024-04-16 19:04:44,565 - lab - INFO - Pruned group: roberta.encoder.layer.4.attention.self.loras., with 50563 small values.
-2024-04-16 19:04:44,615 - lab - INFO - Pruned group: roberta.encoder.layer.5.output.adapters., with 3775 small values.
-2024-04-16 19:04:46,819 - lab - INFO - Epoch 1 || Validation loss: 0.012344 || Validation accuracy: 0.574661
-2024-04-16 19:04:46,865 - lab - INFO - Pruned group: roberta.encoder.layer.7.attention.self.loras., with 50555 small values.
-2024-04-16 19:04:46,912 - lab - INFO - Pruned group: roberta.encoder.layer.0.output.adapters., with 3775 small values.
-2024-04-16 19:04:49,155 - lab - INFO - Epoch 1 || Validation loss: 0.012342 || Validation accuracy: 0.574661
-2024-04-16 19:04:49,199 - lab - INFO - Pruned group: roberta.encoder.layer.8.attention.self.loras., with 50549 small values.
-2024-04-16 19:04:49,242 - lab - INFO - Pruned group: roberta.encoder.layer.8.output.adapters., with 3772 small values.
-2024-04-16 19:04:51,432 - lab - INFO - Epoch 1 || Validation loss: 0.012331 || Validation accuracy: 0.574661
-2024-04-16 19:04:51,470 - lab - INFO - Pruned group: roberta.encoder.layer.2.attention.self.loras., with 50547 small values.
-2024-04-16 19:04:51,509 - lab - INFO - Pruned group: roberta.encoder.layer.10.output.adapters., with 3762 small values.
-2024-04-16 19:04:51,554 - lab - INFO - Start Preprocessing...
-2024-04-16 19:04:53,177 - lab - INFO - trainable params: 125288025 || all params: 125288025 || trainable%: 100.00
-2024-04-16 19:04:57,425 - lab - INFO - trainable params: 3308699 || all params: 127954331 || trainable%: 2.59
-2024-04-16 19:04:57,433 - lab - INFO - Start training...
-2024-04-16 19:04:57,433 - lab - INFO - Task:axg
-2024-04-16 19:04:57,954 - lab - INFO - Epoch 1 || Validation loss: 0.019416 || Validation accuracy: 0.458333
-2024-04-16 19:04:58,015 - lab - INFO - Pruned group: roberta.encoder.layer.7.attention.self.loras., with 50565 small values.
-2024-04-16 19:04:58,075 - lab - INFO - Pruned group: roberta.encoder.layer.9.output.adapters., with 3838 small values.
-2024-04-16 19:04:58,426 - lab - INFO - Epoch 1 || Validation loss: 0.019388 || Validation accuracy: 0.458333
-2024-04-16 19:04:58,483 - lab - INFO - Pruned group: roberta.encoder.layer.11.attention.self.loras., with 50562 small values.
-2024-04-16 19:04:58,539 - lab - INFO - Pruned group: roberta.encoder.layer.2.output.adapters., with 3821 small values.
-2024-04-16 19:04:58,896 - lab - INFO - Epoch 1 || Validation loss: 0.019365 || Validation accuracy: 0.458333
-2024-04-16 19:04:58,948 - lab - INFO - Pruned group: roberta.encoder.layer.2.attention.self.loras., with 50561 small values.
-2024-04-16 19:04:59,001 - lab - INFO - Pruned group: roberta.encoder.layer.8.output.adapters., with 3802 small values.
-2024-04-16 19:04:59,324 - lab - INFO - Epoch 1 || Validation loss: 0.019356 || Validation accuracy: 0.458333
-2024-04-16 19:04:59,366 - lab - INFO - Pruned group: roberta.encoder.layer.9.attention.self.loras., with 50534 small values.
-2024-04-16 19:04:59,409 - lab - INFO - Pruned group: roberta.encoder.layer.1.output.adapters., with 3791 small values.
-2024-04-16 19:04:59,728 - lab - INFO - Epoch 1 || Validation loss: 0.019332 || Validation accuracy: 0.458333
-2024-04-16 19:04:59,767 - lab - INFO - Pruned group: roberta.encoder.layer.10.attention.self.loras., with 50531 small values.
-2024-04-16 19:04:59,805 - lab - INFO - Pruned group: roberta.encoder.layer.11.output.adapters., with 3775 small values.
-2024-04-16 19:04:59,819 - lab - INFO - Start Preprocessing...
-2024-04-16 19:05:01,888 - lab - INFO - trainable params: 125288025 || all params: 125288025 || trainable%: 100.00
-2024-04-16 19:05:08,616 - lab - INFO - trainable params: 3308699 || all params: 127954331 || trainable%: 2.59
-2024-04-16 19:05:08,625 - lab - INFO - Start training...
-2024-04-16 19:05:08,625 - lab - INFO - Task:boolq
+2024-04-16 19:31:51,795 - lab - INFO - Start Preprocessing...
+2024-04-16 19:31:53,891 - lab - INFO - trainable params: 125288025 || all params: 125288025 || trainable%: 100.00
+2024-04-16 19:31:58,946 - lab - INFO - trainable params: 3308699 || all params: 127954331 || trainable%: 2.59
+2024-04-16 19:31:58,957 - lab - INFO - Start training...
+2024-04-16 19:31:58,957 - lab - INFO - Task:axb
+2024-04-16 19:32:01,168 - lab - INFO - Epoch 1 || Validation loss: 0.011268 || Validation accuracy: 0.565217
+2024-04-16 19:32:03,160 - lab - INFO - Epoch 2 || Validation loss: 0.011238 || Validation accuracy: 0.565217
+2024-04-16 19:32:05,153 - lab - INFO - Epoch 3 || Validation loss: 0.011229 || Validation accuracy: 0.565217
+2024-04-16 19:32:05,263 - lab - INFO - Pruned group: roberta.encoder.layer.0.attention.self.loras., with 4.0252422922604225e-11 small values.
+2024-04-16 19:32:05,363 - lab - INFO - Pruned group: roberta.encoder.layer.2.output.adapters., with 1.170235797154362e-09 small values.
+2024-04-16 19:32:07,354 - lab - INFO - Epoch 1 || Validation loss: 0.011384 || Validation accuracy: 0.565217
+2024-04-16 19:32:09,280 - lab - INFO - Epoch 2 || Validation loss: 0.011562 || Validation accuracy: 0.565217
+2024-04-16 19:32:11,215 - lab - INFO - Epoch 3 || Validation loss: 0.011505 || Validation accuracy: 0.565217
+2024-04-16 19:32:11,312 - lab - INFO - Pruned group: roberta.encoder.layer.1.attention.self.loras., with 0.0024591931141912937 small values.
+2024-04-16 19:32:11,405 - lab - INFO - Pruned group: roberta.encoder.layer.1.output.adapters., with 1.4832710615308997e-09 small values.
+2024-04-16 19:32:13,357 - lab - INFO - Epoch 1 || Validation loss: 0.011194 || Validation accuracy: 0.565217
+2024-04-16 19:32:15,283 - lab - INFO - Epoch 2 || Validation loss: 0.011196 || Validation accuracy: 0.568841
+2024-04-16 19:32:17,235 - lab - INFO - Epoch 3 || Validation loss: 0.011189 || Validation accuracy: 0.565217
+2024-04-16 19:32:17,320 - lab - INFO - Pruned group: roberta.encoder.layer.10.attention.self.loras., with 0.0024705498944967985 small values.
+2024-04-16 19:32:17,412 - lab - INFO - Pruned group: roberta.encoder.layer.0.output.adapters., with 1.733216237198576e-09 small values.
+2024-04-16 19:32:19,283 - lab - INFO - Epoch 1 || Validation loss: 0.011433 || Validation accuracy: 0.565217
+2024-04-16 19:32:21,170 - lab - INFO - Epoch 2 || Validation loss: 0.011345 || Validation accuracy: 0.565217
+2024-04-16 19:32:23,070 - lab - INFO - Epoch 3 || Validation loss: 0.011350 || Validation accuracy: 0.565217
+2024-04-16 19:32:23,147 - lab - INFO - Pruned group: roberta.encoder.layer.7.attention.self.loras., with 0.0024683400988578796 small values.
+2024-04-16 19:32:23,223 - lab - INFO - Pruned group: roberta.encoder.layer.8.output.adapters., with 9.39873401328839e-10 small values.
+2024-04-16 19:32:25,121 - lab - INFO - Epoch 1 || Validation loss: 0.011111 || Validation accuracy: 0.565217
+2024-04-16 19:32:26,986 - lab - INFO - Epoch 2 || Validation loss: 0.011105 || Validation accuracy: 0.565217
+2024-04-16 19:32:28,848 - lab - INFO - Epoch 3 || Validation loss: 0.011103 || Validation accuracy: 0.565217
+2024-04-16 19:32:28,918 - lab - INFO - Pruned group: roberta.encoder.layer.5.attention.self.loras., with 0.002472876338288188 small values.
+2024-04-16 19:32:28,987 - lab - INFO - Pruned group: roberta.encoder.layer.11.output.adapters., with 6.391647211501095e-10 small values.
+2024-04-16 19:32:30,838 - lab - INFO - Epoch 1 || Validation loss: 0.011295 || Validation accuracy: 0.565217
+2024-04-16 19:32:32,670 - lab - INFO - Epoch 2 || Validation loss: 0.011455 || Validation accuracy: 0.565217
+2024-04-16 19:32:34,513 - lab - INFO - Epoch 3 || Validation loss: 0.011427 || Validation accuracy: 0.565217
+2024-04-16 19:32:34,573 - lab - INFO - Pruned group: roberta.encoder.layer.2.attention.self.loras., with 0.0024779504165053368 small values.
+2024-04-16 19:32:34,634 - lab - INFO - Pruned group: roberta.encoder.layer.3.output.adapters., with 2.578649738183003e-09 small values.
+2024-04-16 19:32:36,460 - lab - INFO - Epoch 1 || Validation loss: 0.011267 || Validation accuracy: 0.543478
+2024-04-16 19:32:38,220 - lab - INFO - Epoch 2 || Validation loss: 0.011221 || Validation accuracy: 0.565217
+2024-04-16 19:32:40,025 - lab - INFO - Epoch 3 || Validation loss: 0.011242 || Validation accuracy: 0.565217
+2024-04-16 19:32:40,080 - lab - INFO - Pruned group: roberta.encoder.layer.3.attention.self.loras., with 0.002472963882610202 small values.
+2024-04-16 19:32:40,134 - lab - INFO - Pruned group: roberta.encoder.layer.5.output.adapters., with 5.3420428081096816e-09 small values.
+2024-04-16 19:32:41,869 - lab - INFO - Epoch 1 || Validation loss: 0.011210 || Validation accuracy: 0.559783
+2024-04-16 19:32:43,603 - lab - INFO - Epoch 2 || Validation loss: 0.011183 || Validation accuracy: 0.565217
+2024-04-16 19:32:45,344 - lab - INFO - Epoch 3 || Validation loss: 0.011220 || Validation accuracy: 0.565217
+2024-04-16 19:32:45,389 - lab - INFO - Pruned group: roberta.encoder.layer.9.attention.self.loras., with 0.0024556778371334076 small values.
+2024-04-16 19:32:45,433 - lab - INFO - Pruned group: roberta.encoder.layer.9.output.adapters., with 4.498056593860156e-09 small values.
+2024-04-16 19:32:47,169 - lab - INFO - Epoch 1 || Validation loss: 0.011645 || Validation accuracy: 0.565217
+2024-04-16 19:32:48,912 - lab - INFO - Epoch 2 || Validation loss: 0.011323 || Validation accuracy: 0.565217
+2024-04-16 19:32:50,688 - lab - INFO - Epoch 3 || Validation loss: 0.011278 || Validation accuracy: 0.565217
+2024-04-16 19:32:50,727 - lab - INFO - Pruned group: roberta.encoder.layer.4.attention.self.loras., with 0.002474779961630702 small values.
+2024-04-16 19:32:50,765 - lab - INFO - Pruned group: roberta.encoder.layer.7.output.adapters., with 4.238887019170079e-09 small values.
+2024-04-16 19:32:52,439 - lab - INFO - Epoch 1 || Validation loss: 0.011195 || Validation accuracy: 0.565217
+2024-04-16 19:32:54,159 - lab - INFO - Epoch 2 || Validation loss: 0.011163 || Validation accuracy: 0.565217
+2024-04-16 19:32:55,885 - lab - INFO - Epoch 3 || Validation loss: 0.011163 || Validation accuracy: 0.565217
+2024-04-16 19:32:55,916 - lab - INFO - Pruned group: roberta.encoder.layer.6.attention.self.loras., with 0.0024664427619427443 small values.
+2024-04-16 19:32:55,946 - lab - INFO - Pruned group: roberta.encoder.layer.6.output.adapters., with 2.4688595612332165e-09 small values.
+2024-04-16 19:32:57,665 - lab - INFO - Epoch 1 || Validation loss: 0.013147 || Validation accuracy: 0.434783
+2024-04-16 19:32:59,366 - lab - INFO - Epoch 2 || Validation loss: 0.012417 || Validation accuracy: 0.434783
+2024-04-16 19:33:01,081 - lab - INFO - Epoch 3 || Validation loss: 0.012218 || Validation accuracy: 0.434783
+2024-04-16 19:33:01,103 - lab - INFO - Pruned group: roberta.encoder.layer.8.attention.self.loras., with 0.002476658672094345 small values.
+2024-04-16 19:33:01,125 - lab - INFO - Pruned group: roberta.encoder.layer.4.output.adapters., with 7.693021331078853e-09 small values.
+2024-04-16 19:33:01,169 - lab - INFO - Start Preprocessing...
+2024-04-16 19:33:02,857 - lab - INFO - trainable params: 125288025 || all params: 125288025 || trainable%: 100.00
+2024-04-16 19:33:07,228 - lab - INFO - trainable params: 3308699 || all params: 127954331 || trainable%: 2.59
+2024-04-16 19:33:07,236 - lab - INFO - Start training...
+2024-04-16 19:33:07,236 - lab - INFO - Task:axg
+2024-04-16 19:33:07,692 - lab - INFO - Epoch 1 || Validation loss: 0.011727 || Validation accuracy: 0.500000
+2024-04-16 19:33:07,953 - lab - INFO - Epoch 2 || Validation loss: 0.011723 || Validation accuracy: 0.500000
+2024-04-16 19:33:08,220 - lab - INFO - Epoch 3 || Validation loss: 0.011722 || Validation accuracy: 0.500000
+2024-04-16 19:33:08,414 - lab - INFO - Pruned group: roberta.encoder.layer.9.attention.self.loras., with 2.8780543920303714e-11 small values.
+2024-04-16 19:33:08,514 - lab - INFO - Pruned group: roberta.encoder.layer.9.output.adapters., with 2.682744582038765e-10 small values.
+2024-04-16 19:33:08,781 - lab - INFO - Epoch 1 || Validation loss: 0.011947 || Validation accuracy: 0.500000
+2024-04-16 19:33:09,043 - lab - INFO - Epoch 2 || Validation loss: 0.011763 || Validation accuracy: 0.483146
+2024-04-16 19:33:09,342 - lab - INFO - Epoch 3 || Validation loss: 0.011729 || Validation accuracy: 0.488764
+2024-04-16 19:33:09,438 - lab - INFO - Pruned group: roberta.encoder.layer.11.attention.self.loras., with 0.002465023659169674 small values.
+2024-04-16 19:33:09,532 - lab - INFO - Pruned group: roberta.encoder.layer.2.output.adapters., with 6.731572521623264e-10 small values.
+2024-04-16 19:33:09,804 - lab - INFO - Epoch 1 || Validation loss: 0.012108 || Validation accuracy: 0.500000
+2024-04-16 19:33:10,060 - lab - INFO - Epoch 2 || Validation loss: 0.011923 || Validation accuracy: 0.500000
+2024-04-16 19:33:10,314 - lab - INFO - Epoch 3 || Validation loss: 0.011881 || Validation accuracy: 0.500000
+2024-04-16 19:33:10,403 - lab - INFO - Pruned group: roberta.encoder.layer.0.attention.self.loras., with 0.0024762775283306837 small values.
+2024-04-16 19:33:10,489 - lab - INFO - Pruned group: roberta.encoder.layer.7.output.adapters., with 3.2038194319738977e-10 small values.
+2024-04-16 19:33:10,748 - lab - INFO - Epoch 1 || Validation loss: 0.011891 || Validation accuracy: 0.500000
+2024-04-16 19:33:11,006 - lab - INFO - Epoch 2 || Validation loss: 0.011758 || Validation accuracy: 0.505618
+2024-04-16 19:33:11,259 - lab - INFO - Epoch 3 || Validation loss: 0.011729 || Validation accuracy: 0.500000
+2024-04-16 19:33:11,338 - lab - INFO - Pruned group: roberta.encoder.layer.4.attention.self.loras., with 0.0024654469452798367 small values.
+2024-04-16 19:33:11,415 - lab - INFO - Pruned group: roberta.encoder.layer.0.output.adapters., with 4.706598999426603e-10 small values.
+2024-04-16 19:33:11,664 - lab - INFO - Epoch 1 || Validation loss: 0.012373 || Validation accuracy: 0.500000
+2024-04-16 19:33:11,910 - lab - INFO - Epoch 2 || Validation loss: 0.012113 || Validation accuracy: 0.500000
+2024-04-16 19:33:12,158 - lab - INFO - Epoch 3 || Validation loss: 0.012030 || Validation accuracy: 0.500000
+2024-04-16 19:33:12,230 - lab - INFO - Pruned group: roberta.encoder.layer.3.attention.self.loras., with 0.0024650488048791885 small values.
+2024-04-16 19:33:12,315 - lab - INFO - Pruned group: roberta.encoder.layer.1.output.adapters., with 5.57215162899638e-10 small values.
+2024-04-16 19:33:12,566 - lab - INFO - Epoch 1 || Validation loss: 0.012833 || Validation accuracy: 0.500000
+2024-04-16 19:33:12,812 - lab - INFO - Epoch 2 || Validation loss: 0.012331 || Validation accuracy: 0.500000
+2024-04-16 19:33:13,060 - lab - INFO - Epoch 3 || Validation loss: 0.012175 || Validation accuracy: 0.500000
+2024-04-16 19:33:13,123 - lab - INFO - Pruned group: roberta.encoder.layer.1.attention.self.loras., with 0.0024612098932266235 small values.
+2024-04-16 19:33:13,185 - lab - INFO - Pruned group: roberta.encoder.layer.3.output.adapters., with 1.1704879288032544e-09 small values.
+2024-04-16 19:33:13,433 - lab - INFO - Epoch 1 || Validation loss: 0.011705 || Validation accuracy: 0.488764
+2024-04-16 19:33:13,671 - lab - INFO - Epoch 2 || Validation loss: 0.011693 || Validation accuracy: 0.511236
+2024-04-16 19:33:13,909 - lab - INFO - Epoch 3 || Validation loss: 0.011693 || Validation accuracy: 0.466292
+2024-04-16 19:33:13,965 - lab - INFO - Pruned group: roberta.encoder.layer.6.attention.self.loras., with 0.0024586012586951256 small values.
+2024-04-16 19:33:14,018 - lab - INFO - Pruned group: roberta.encoder.layer.5.output.adapters., with 4.2508804809493483e-10 small values.
+2024-04-16 19:33:14,258 - lab - INFO - Epoch 1 || Validation loss: 0.012671 || Validation accuracy: 0.500000
+2024-04-16 19:33:14,499 - lab - INFO - Epoch 2 || Validation loss: 0.012448 || Validation accuracy: 0.500000
+2024-04-16 19:33:14,736 - lab - INFO - Epoch 3 || Validation loss: 0.012373 || Validation accuracy: 0.500000
+2024-04-16 19:33:14,787 - lab - INFO - Pruned group: roberta.encoder.layer.2.attention.self.loras., with 0.0024789338931441307 small values.
+2024-04-16 19:33:14,835 - lab - INFO - Pruned group: roberta.encoder.layer.8.output.adapters., with 1.1273653122145788e-09 small values.
+2024-04-16 19:33:15,066 - lab - INFO - Epoch 1 || Validation loss: 0.015529 || Validation accuracy: 0.500000
+2024-04-16 19:33:15,294 - lab - INFO - Epoch 2 || Validation loss: 0.015083 || Validation accuracy: 0.500000
+2024-04-16 19:33:15,526 - lab - INFO - Epoch 3 || Validation loss: 0.014910 || Validation accuracy: 0.500000
+2024-04-16 19:33:15,566 - lab - INFO - Pruned group: roberta.encoder.layer.7.attention.self.loras., with 0.0024598052259534597 small values.
+2024-04-16 19:33:15,604 - lab - INFO - Pruned group: roberta.encoder.layer.4.output.adapters., with 1.0676259876163385e-09 small values.
+2024-04-16 19:33:15,828 - lab - INFO - Epoch 1 || Validation loss: 0.012308 || Validation accuracy: 0.500000
+2024-04-16 19:33:16,046 - lab - INFO - Epoch 2 || Validation loss: 0.012191 || Validation accuracy: 0.500000
+2024-04-16 19:33:16,264 - lab - INFO - Epoch 3 || Validation loss: 0.012148 || Validation accuracy: 0.500000
+2024-04-16 19:33:16,298 - lab - INFO - Pruned group: roberta.encoder.layer.5.attention.self.loras., with 0.0024818051606416702 small values.
+2024-04-16 19:33:16,332 - lab - INFO - Pruned group: roberta.encoder.layer.6.output.adapters., with 8.542639373665395e-10 small values.
+2024-04-16 19:33:16,540 - lab - INFO - Epoch 1 || Validation loss: 0.014543 || Validation accuracy: 0.500000
+2024-04-16 19:33:16,743 - lab - INFO - Epoch 2 || Validation loss: 0.014279 || Validation accuracy: 0.500000
+2024-04-16 19:33:16,946 - lab - INFO - Epoch 3 || Validation loss: 0.014180 || Validation accuracy: 0.500000
+2024-04-16 19:33:16,968 - lab - INFO - Pruned group: roberta.encoder.layer.8.attention.self.loras., with 0.0024858475662767887 small values.
+2024-04-16 19:33:16,990 - lab - INFO - Pruned group: roberta.encoder.layer.11.output.adapters., with 1.0982563747319318e-09 small values.
+2024-04-16 19:33:17,006 - lab - INFO - Start Preprocessing...
+2024-04-16 19:33:18,835 - lab - INFO - trainable params: 125288025 || all params: 125288025 || trainable%: 100.00
+2024-04-16 19:33:25,752 - lab - INFO - trainable params: 3308699 || all params: 127954331 || trainable%: 2.59
+2024-04-16 19:33:25,760 - lab - INFO - Start training...
+2024-04-16 19:33:25,761 - lab - INFO - Task:boolq
