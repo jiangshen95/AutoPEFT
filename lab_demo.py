@@ -1,5 +1,6 @@
 # 导入必要的库和函数
 # 用于加载和处理序列到序列的语言模型
+import hiddenlayer as h
 import argparse
 import logging
 import re
@@ -47,6 +48,7 @@ valid_dataloader = None
 optimizer = None
 scheduler = None
 loss_fn = None
+dummy_input = None
 
 
 def get_dataset(name):
@@ -132,6 +134,7 @@ def preprocessing(task_name, configs=None):
 
 
 def train_epoch(epoch_num):
+    global dummy_input
     # 重置优化器
     optimizer = AdamW(model.parameters(), lr=1e-5)
     scheduler = get_linear_schedule_with_warmup(
@@ -170,6 +173,8 @@ def train_epoch(epoch_num):
                                    return_tensors='pt', padding=True, truncation=True, max_length=512)
                 inputs = {name: tensor.to(device) for name,
                           tensor in inputs.items()}  # 将输入数据移动到GPU上
+                if (dummy_input == None):
+                    dummy_input = inputs
                 batch['label'] = batch['label'].to(device)
                 outputs = model(**inputs)
                 loss = loss_fn(outputs.logits, batch['label'])
@@ -313,23 +318,13 @@ def main():
             torch.cuda.empty_cache()
             logger.info(f'Task:{task}')
             for i in range(1):
-                print_trainable_parameters(model)
-                groups = ['roberta.encoder.layer.0.output.adapters.rotten_tomatoes.adapter_down.0.weight', 'roberta.encoder.layer.0.output.adapters.rotten_tomatoes.adapter_down.0.bias',
-                          'roberta.encoder.layer.0.output.adapters.rotten_tomatoes.adapter_up.weight', 'roberta.encoder.layer.0.output.adapters.rotten_tomatoes.adapter_up.bias']
-                set_weights_to_zero_and_untrainable(
-                    groups, model)
-                groups = ['roberta.encoder.layer.11.attention.self.query.loras.rotten_tomatoes.lora_A', 'roberta.encoder.layer.11.attention.self.query.loras.rotten_tomatoes.lora_B',
-                          'roberta.encoder.layer.11.attention.self.value.loras.rotten_tomatoes.lora_A', 'roberta.encoder.layer.11.attention.self.value.loras.rotten_tomatoes.lora_B']
-                set_weights_to_zero_and_untrainable(groups, model)
-                print_trainable_parameters(model)
-                # 剪枝训练循环
                 train_epoch(3)
-
-                # prune_model(model, task_name=task, opts=[
-                #             'lora'], p_method='values_below_threshold', top_p=1, print_names=True)
-                # prune_model(model, task_name=task, opts=[
-                #             'adapter'], p_method='values_below_threshold', top_p=1, print_names=True)
-                # reinitialize_trainable_parameters(model)
+                
+                prune_model(model, task_name=task, opts=[
+                            'lora'], p_method='values_below_threshold', top_p=1, print_names=True)
+                prune_model(model, task_name=task, opts=[
+                            'adapter'], p_method='values_below_threshold', top_p=1, print_names=True)
+                reinitialize_trainable_parameters(model)
 
 
 if __name__ == "__main__":

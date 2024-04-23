@@ -1,2 +1,4 @@
 tempCodeRunnerFile.py
 __pycache__/
+*.pth
+*.onnx

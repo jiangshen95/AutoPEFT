@@ -1,10 +1,10 @@
-2024-04-23 15:42:27,486 - lab - INFO - Start Preprocessing...
-2024-04-23 15:42:29,564 - lab - INFO - trainable params: 125288025 || all params: 125288025 || trainable%: 100.00
-2024-04-23 15:42:36,502 - lab - INFO - trainable params: 4488347 || all params: 129133979 || trainable%: 3.48
-2024-04-23 15:42:36,507 - lab - INFO - Start training...
-2024-04-23 15:42:36,507 - lab - INFO - Task:rotten_tomatoes
-2024-04-23 15:42:36,508 - lab - INFO - trainable params: 4488347 || all params: 129133979 || trainable%: 3.48
-2024-04-23 15:42:36,543 - lab - INFO - trainable params: 4217195 || all params: 129133979 || trainable%: 3.27
-2024-04-23 15:42:59,651 - lab - INFO - Epoch 1 || Validation loss: 0.023573 || Validation accuracy: 0.848968
-2024-04-23 15:43:21,953 - lab - INFO - Epoch 2 || Validation loss: 0.021842 || Validation accuracy: 0.867730
-2024-04-23 15:43:44,079 - lab - INFO - Epoch 3 || Validation loss: 0.021675 || Validation accuracy: 0.869606
+2024-04-23 19:18:05,473 - lab - INFO - Start Preprocessing...
+2024-04-23 19:18:08,036 - lab - INFO - trainable params: 125288025 || all params: 125288025 || trainable%: 100.00
+2024-04-23 19:18:14,715 - lab - INFO - trainable params: 4488347 || all params: 129133979 || trainable%: 3.48
+2024-04-23 19:18:14,718 - lab - INFO - Start training...
+2024-04-23 19:18:14,718 - lab - INFO - Task:rotten_tomatoes
+2024-04-23 19:18:38,504 - lab - INFO - Epoch 1 || Validation loss: 0.024064 || Validation accuracy: 0.837711
+2024-04-23 19:33:51,875 - lab - INFO - roberta.encoder.layer.0.attention.self.loras.:
+2024-04-23 19:33:51,875 - lab - INFO -   roberta.encoder.layer.0.attention.self.query.loras.rotten_tomatoes.lora_A
+2024-04-23 19:33:51,875 - lab - INFO -   roberta.encoder.layer.0.attention.self.query.loras.rotten_tomatoes.lora_B
+2024-04-23 19:33:51,875 - lab - INFO -   r
