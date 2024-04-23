@@ -10,10 +10,9 @@ Hello AutoPEFT!
 - 验证已有实现的效果，尤其是在大模型上的效果
 - 实现架构搜索模块
 
-- 把找名字函数放到pruning里
-- 剪枝函数放到pruning里
-- 在剪枝里放不同PEFT的实现
 ## TODO
+- prefix-tuning
+- verbose
 - baseline：普通PEFT，比如LORA
 - 没做剪枝的baseline
 - 使用AUC
