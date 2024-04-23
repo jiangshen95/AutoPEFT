@@ -1,5 +1,6 @@
 # 导入必要的库和函数
 # 用于加载和处理序列到序列的语言模型
+import argparse
 import logging
 import re
 from torch.nn.parameter import Parameter
@@ -48,9 +49,12 @@ scheduler = None
 loss_fn = None
 
 
-def get_dataset(name, model):
-    global dataset
-    dataset = load_dataset("super_glue", name)
+def get_dataset(name):
+    global dataset, model
+    if name in ['axb', 'axg', 'cb', 'copa', 'multirc', 'record', 'rte', 'wic', 'wsc']:
+        dataset = load_dataset("super_glue", name)
+    else:
+        dataset = load_dataset(name)
     if dataset['test']:
         # 获取分类信息
         num_labels = dataset["test"].features["label"].num_classes
@@ -61,7 +65,7 @@ def get_dataset(name, model):
         logger.info("No test dataset available for this task.")
 
 
-def preprocessing(task_name):
+def preprocessing(task_name, configs=None):
     global device, dataset, model, tokenizer, train_dataloader, valid_dataloader, optimizer, scheduler, loss_fn
     logger.info("Start Preprocessing...")
     # 定义一些参数
@@ -78,22 +82,26 @@ def preprocessing(task_name):
 
     print_trainable_parameters(model)
     # 加载数据集
-    get_dataset(task_name, model)
+    get_dataset(task_name)
 
-    # 配置PEFT的参数
-    lora_config = LoRAConfig(
-        r=32,  # 设置LoRA的rank
-        alpha=32,  # LoRA的alpha值，决定参数增加的数量
-        dropout=0.1,  # LoRA层的dropout比例
-        # leave_out=[6, 7, 8, 9, 10, 11],  # 指定需要转换的层 #important
-    )
+    if configs == None:
+        # 配置PEFT的参数
+        lora_config = LoRAConfig(
+            r=32,  # 设置LoRA的rank
+            alpha=32,  # LoRA的alpha值，决定参数增加的数量
+            dropout=0.1,  # LoRA层的dropout比例
+            # leave_out=[6, 7, 8, 9, 10, 11],  # 指定需要转换的层 #important
+        )
 
-    bn_config = SeqBnConfig(
-        reduction_factor=16,  # 设置瓶颈维度
-        # leave_out=[6, 7, 8, 9, 10, 11]  # 指定需要转换的层 #important
-    )
+        bn_config = SeqBnConfig(
+            reduction_factor=16,  # 设置瓶颈维度
+            # leave_out=[6, 7, 8, 9, 10, 11]  # 指定需要转换的层 #important
+        )
 
-    config_list = [lora_config, bn_config]
+        config_list = [lora_config, bn_config]
+    else:
+        config_list = configs
+
     peft_config = ConfigUnion(*[config_list[i]
                               for i in range(len(config_list))])
 
@@ -104,16 +112,17 @@ def preprocessing(task_name):
     model = model.to(device)
 
     print_trainable_parameters(model)
-    dataset = dataset['test'].train_test_split(test_size=0.5)
+    if 'train' not in dataset:
+        dataset = dataset['test'].train_test_split(test_size=0.5)
 
     # 定义训练和验证的数据加载器
     train_dataloader = DataLoader(
-        dataset['train'], batch_size=64, shuffle=True)
+        dataset['train'], batch_size=16, shuffle=True)
     valid_dataloader = DataLoader(
-        dataset['test'], batch_size=64, shuffle=False)
+        dataset['test'], batch_size=16, shuffle=False)
 
     # 定义优化器和学习率调度器
-    optimizer = AdamW(model.parameters(), lr=1e-5)
+    optimizer = AdamW(model.parameters(), lr=1e-7)
     scheduler = get_linear_schedule_with_warmup(
         optimizer, num_warmup_steps=0, num_training_steps=len(train_dataloader) * 3)
 
@@ -180,45 +189,6 @@ def get_trainable_parameters(model):
     return names
 
 
-def group_parameters_by_prefix(names, task_name, opt='', print_names=False):
-    groups = {}
-    names = [
-        name for name in names if task_name in name and 'head' not in name and opt in name]
-    for name in names:
-        # 分割参数名，获取前缀
-        prefix = name.split(task_name)[0]
-        prefix = prefix.replace('query.', '').replace('value.', '')
-        # 如果前缀已经在字典中，就将参数名添加到对应的列表中
-        if prefix in groups:
-            groups[prefix].append(name)
-        # 否则，创建一个新的列表
-        else:
-            groups[prefix] = [name]
-    if print_names:
-        for prefix, names in groups.items():
-            logger.info(f"{prefix}:")
-            for name in names:
-                logger.info(f"  {name}")
-    return groups
-
-
-def find_group_with_most_small_values(groups, model):
-    max_small_values = 0
-    max_group = None
-    max_names = []
-    for group, names in groups.items():
-        num_small_values = 0
-        for name in names:
-            weights = model.state_dict()[name]
-            num_small_values += torch.lt(torch.abs(weights),
-                                         0.001).sum().item()
-        if num_small_values > max_small_values:
-            max_small_values = num_small_values
-            max_group = group
-            max_names = names
-    return max_group, max_names, max_small_values
-
-
 def plot_small_value_ratios(groups, model):
     group_names = []
     small_value_ratios = []
@@ -279,8 +249,15 @@ def reinitialize_trainable_parameters(model):
                 torch.nn.init.xavier_uniform_(param)
 
 
-if __name__ == '__main__':
+def main():
+    global model, dataset
+    parser = argparse.ArgumentParser(description='Lab demo script')
+    parser.add_argument('--run_baseline_lora', action='store_true',
+                        help='Run the baseline: lora or adapter')
+    parser.add_argument('--run_baseline_adapter', action='store_true',
+                        help='Run the baseline: lora or adapter')
 
+    args = parser.parse_args()
     # 创建一个日志记录器
     logger = logging.getLogger('lab')
     logger.setLevel(logging.INFO)  # 设置日志级别
@@ -297,22 +274,63 @@ if __name__ == '__main__':
     # 将文件处理器添加到日志记录器中
     logger.addHandler(file_handler)
 
-    task_names = ['axb', 'axg', 'boolq', 'cb', 'copa',
-                  'multirc', 'record', 'rte', 'wic', 'wsc']
-    # task_names = ['cb', 'copa',
+    task_names = ['axb']
+    task_names = ['rotten_tomatoes']
+    # task_names = ['axg', 'cb', 'copa',
     #   'multirc', 'record', 'rte', 'wic', 'wsc']
-    for task in task_names:
-        model = None
-        dataset = None
-        torch.cuda.empty_cache()
-        preprocessing(task)
-        logger.info(f'Task:{task}')
-        for i in range(11):
-            # 剪枝训练循环
-            train_epoch(3)
+    # 配置PEFT的参数
+    lora_config = LoRAConfig(
+        r=64,  # 设置LoRA的rank
+        alpha=32,  # LoRA的alpha值，决定参数增加的数量
+        dropout=0.1,  # LoRA层的dropout比例
+        # leave_out=[6, 7, 8, 9, 10, 11],  # 指定需要转换的层 #important
+    )
 
-            prune_model(model, task_name=task, opts=[
-                        'lora'], p_method='minimum_weight', top_p=1, print_names=True)
-            prune_model(model, task_name=task, opts=[
-                        'adapter'], p_method='minimum_weight', top_p=1, print_names=True)
-            reinitialize_trainable_parameters(model)
+    bn_config = SeqBnConfig(
+        reduction_factor=16,  # 设置瓶颈维度
+        # leave_out=[6, 7, 8, 9, 10, 11]  # 指定需要转换的层 #important
+    )
+
+    configs = [lora_config, bn_config]
+
+    if args.run_baseline_lora:
+        for task in task_names:
+            preprocessing(task, [lora_config])
+            logger.info(f'Task:{task}')
+            train_epoch(10)
+    elif args.run_baseline_adapter:
+        for task in task_names:
+            model = None
+            dataset = None
+            preprocessing(task, [bn_config])
+            logger.info(f'Task:{task}')
+            train_epoch(10)
+    else:
+        for task in task_names:
+            model = None
+            dataset = None
+            preprocessing(task, configs)
+            torch.cuda.empty_cache()
+            logger.info(f'Task:{task}')
+            for i in range(1):
+                print_trainable_parameters(model)
+                groups = ['roberta.encoder.layer.0.output.adapters.rotten_tomatoes.adapter_down.0.weight', 'roberta.encoder.layer.0.output.adapters.rotten_tomatoes.adapter_down.0.bias',
+                          'roberta.encoder.layer.0.output.adapters.rotten_tomatoes.adapter_up.weight', 'roberta.encoder.layer.0.output.adapters.rotten_tomatoes.adapter_up.bias']
+                set_weights_to_zero_and_untrainable(
+                    groups, model)
+                groups = ['roberta.encoder.layer.11.attention.self.query.loras.rotten_tomatoes.lora_A', 'roberta.encoder.layer.11.attention.self.query.loras.rotten_tomatoes.lora_B',
+                          'roberta.encoder.layer.11.attention.self.value.loras.rotten_tomatoes.lora_A', 'roberta.encoder.layer.11.attention.self.value.loras.rotten_tomatoes.lora_B']
+                set_weights_to_zero_and_untrainable(groups, model)
+                print_trainable_parameters(model)
+                # 剪枝训练循环
+                train_epoch(3)
+
+                # prune_model(model, task_name=task, opts=[
+                #             'lora'], p_method='values_below_threshold', top_p=1, print_names=True)
+                # prune_model(model, task_name=task, opts=[
+                #             'adapter'], p_method='values_below_threshold', top_p=1, print_names=True)
+                # reinitialize_trainable_parameters(model)
+
+
+if __name__ == "__main__":
+    main()
