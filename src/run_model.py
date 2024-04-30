@@ -8,7 +8,9 @@ import argparse
 import sys
 import os
 import torch
+import torch.nn as nn
 from torch.nn.parameter import Parameter
+import math
 import numpy as np
 import re
 from adapters import AutoAdapterModel, AdapterArguments, AdapterTrainer, AdapterConfig, ConfigUnion, LoRAConfig, SeqBnConfig, PrefixTuningConfig
@@ -100,11 +102,27 @@ class PEFTModel:
         self.model.add_adapter("my_module", config=peft_config)
         self.model.train_adapter("my_module")
 
-        # if configs.get('lora'):
-        #     names = get_trainable_parameters(self.model)
-        #     groups = group_parameters_by_prefix(
-        #         names, opts='lora', task_name="my_module")
-        #     print(groups)
+        if configs.get('lora'):
+            names = get_trainable_parameters(self.model)
+            groups = group_parameters_by_prefix(
+                names, opts='lora', task_name="my_module")
+            sorted_groups = sorted(groups.items())
+            sorted_groups = ([name[1] for name in sorted_groups])
+
+            ranks = [r for r in configs['lora']['ranks'] if r != 0]
+            for group, r in zip(sorted_groups, ranks):
+                self.set_peft_group(group, 'set', r)
+
+        if configs.get('adapter'):
+            names = get_trainable_parameters(self.model)
+            groups = group_parameters_by_prefix(
+                names, opts='adapter', task_name="my_module")
+            sorted_groups = sorted(groups.items())
+            sorted_groups = ([name[1] for name in sorted_groups])
+
+            ranks = [r for r in configs['adapter']['bn'] if r != 0]
+            for group, r in zip(sorted_groups, ranks):
+                self.set_peft_group(group, 'set', r)
 
     def run(self):
         ''' tokenize the dataset and train the model
@@ -208,12 +226,15 @@ class PEFTModel:
             # TODO: remove the module
 
         for name in [name for name in group if 'lora_A' in name]:
-            weights = torch.rand(target_rank_size, origin_emb_size)
+            weights = torch.zeros(target_rank_size, origin_emb_size)
+            nn.init.kaiming_uniform_(
+                weights, a=math.sqrt(5)
+            )  # TODO: use rand will unable to train, use kaiming init is weaker than default(0.74 vs 0.77 on rotten_tomatoes 4 epoch)
             exec('self.model.' + name +
                  '=Parameter(data=weights, requires_grad=True)')
 
         for name in [name for name in group if 'lora_B' in name]:
-            weights = torch.rand(origin_emb_size, target_rank_size)
+            weights = torch.zeros(origin_emb_size, target_rank_size)
             exec('self.model.' + name +
                  '=Parameter(data=weights, requires_grad=True)')
 
@@ -221,7 +242,8 @@ class PEFTModel:
                 name for name in group
                 if 'adapter_down' in name and 'weight' in name
         ]:
-            weights = torch.rand(target_rank_size, origin_emb_size)
+            weights = torch.rand(target_rank_size,
+                                 origin_emb_size)  # TODO: how to init?
             exec('self.model.' + name +
                  '=Parameter(data=weights, requires_grad=True)')
 
@@ -245,17 +267,4 @@ if __name__ == '__main__':
     configs = PEFTSearchSpace(args).get_config()
     dataset = PEFTDataset('rotten_tomatoes', test_size=0.5).get_dataset()
     model = PEFTModel(configs, dataset)
-    # model.run()
-    names = get_trainable_parameters(model.model)
-    groups = group_parameters_by_prefix(
-        names, opts='adapter', task_name="my_module")
-    sorted_groups = sorted(groups.items())
-    print([name[1] for name in sorted_groups])
-
-    print_trainable_parameters(model.model)
-    model.set_peft_group(sorted_groups[0][1], 'half')
-    model.set_peft_group(sorted_groups[1][1], 'half')
-    model.set_peft_group(sorted_groups[2][1], 'half')
-    model.set_peft_group(sorted_groups[3][1], 'half')
-
-    print_trainable_parameters(model.model)
+    model.run()
