@@ -12,3 +12,4 @@
 2024-04-30 15:36:39,279 - controller - INFO - Start searching for [64, 64, 16, 16, 16, 16, 16, 64, 48, 64, 16, 0]
 2024-04-30 15:37:39,527 - controller - INFO - Result for [64, 64, 16, 16, 16, 16, 16, 64, 48, 64, 16, 0]: {'eval_loss': 0.6907030940055847, 'eval_accuracy': 0.5628517823639775, 'eval_runtime': 3.9106, 'eval_samples_per_second': 136.297, 'eval_steps_per_second': 2.301, 'epoch': 4.0}
 2024-04-30 15:37:39,527 - controller - INFO - Start searching for [32, 64, 64, 32, 16, 16, 32, 16, 64, 32, 16, 0]
+123123
