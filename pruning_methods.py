@@ -1,16 +1,13 @@
-import torch
-import re
-from torch.nn.parameter import Parameter
-import logging
+'''
 
-logger = logging.getLogger('lab')
+'''
 
 
 def get_trainable_parameters(model):
     names = []
     for name, param in model.named_parameters():
         if param.requires_grad:
-            # logger.info(name)
+            # print(name)
             names.append(name)
     return names
 
@@ -35,9 +32,9 @@ def group_parameters_by_prefix(names, opts=[], print_names=False, task_name=''):
             groups[prefix] = [name]
     if print_names:
         for prefix, names in groups.items():
-            logger.info(f"{prefix}:")
+            print(f"{prefix}:")
             for name in names:
-                logger.info(f"  {name}")
+                print(f"  {name}")
     return groups
 
 
@@ -72,20 +69,33 @@ def find_group_with_most_small_values(groups, model, p_method, top_p=1):
     return sorted_groups
 
 
-def set_weights_to_zero_and_untrainable(groups, model):
+def remove(path, model, methods):
+    path = path.split('.')
+    print(path)
+    module = model
+    for part in path:  # 遍历到最后一个之前的路径部分，定位到父模块
+        if part.isdigit():
+            part = int(part)  # 如果是数字，转换为整数索引
+            module = module[part]
+        elif part == methods:
+            module = delattr(module, part)
+            break
+        else:
+            module = getattr(module, part)
+        print(part)
+
+
+def remove_layers(groups, model):
     for group_info in groups:
-        _, names, _ = group_info
-        for name in names:
-            # 获取权重
-            weights = model.state_dict()[name]
-            # 将权重设置为全 0
-            weights.zero_()
-            # 将修改后的权重重新赋值给模型中的对应模块
-            name = re.sub(r'\.(\d+)', r'[\1]', name)
-            exec(
-                'model.' + name +
-                ' = Parameter(data=weights, requires_grad=False)', globals(),
-                locals())
+        group_name, names, _ = group_info
+        # 解析层的路径，以便能够定位并删除
+        if 'lora' in group_name:
+            for name in names:
+                if 'lora_B' in name:
+                    continue  # 如果路径中包含 'lora_B'，则跳过这个名字的处理
+                remove(name, model, 'loras')
+        elif 'adapter' in group_name:
+            remove(group_name[:-1], model, 'adapters')
 
 
 def prune_model(model,
@@ -98,15 +108,15 @@ def prune_model(model,
     names = get_trainable_parameters(model)
     # 根据前缀分组参数
     groups = group_parameters_by_prefix(
-        names, opts=opts, print_names=False, task_name=task_name)
+        names, opts=opts, print_names=print_names, task_name=task_name)
     # 找到最适合剪枝的参数组
     sorted_groups = find_group_with_most_small_values(groups, model, p_method,
                                                       top_p)
+    print(sorted_groups)
     # 将找到的参数组的权重设置为0并设为不可训练
-    set_weights_to_zero_and_untrainable(sorted_groups, model)
+    remove_layers(sorted_groups, model)
     # 打印剪枝后的信息，可选
     if print_names:
         for group_info in sorted_groups:
             group, _, small_values = group_info
-            logger.info(
-                f"Pruned group: {group}, with {small_values} small values.")
+            print(f"Pruned group: {group}, with {small_values} small values.")
