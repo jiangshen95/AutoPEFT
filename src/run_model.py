@@ -8,11 +8,26 @@ import argparse
 import sys
 import os
 import torch
+from torch.nn.parameter import Parameter
 import numpy as np
+import re
 from adapters import AutoAdapterModel, AdapterArguments, AdapterTrainer, AdapterConfig, ConfigUnion, LoRAConfig, SeqBnConfig, PrefixTuningConfig
 from transformers import RobertaTokenizer, TrainingArguments
 from src.peft_search_space import PEFTSearchSpace
 from src.dataset_wrapper import PEFTDataset
+from pruning_methods import get_trainable_parameters, group_parameters_by_prefix
+
+
+def print_trainable_parameters(model):
+    trainable_params = 0
+    all_param = 0
+    for _, param in model.named_parameters():
+        all_param += param.numel()
+        if param.requires_grad:
+            trainable_params += param.numel()
+    print(
+        f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param:.2f}"
+    )
 
 
 class PEFTModel:
@@ -85,6 +100,12 @@ class PEFTModel:
         self.model.add_adapter("my_module", config=peft_config)
         self.model.train_adapter("my_module")
 
+        # if configs.get('lora'):
+        #     names = get_trainable_parameters(self.model)
+        #     groups = group_parameters_by_prefix(
+        #         names, opts='lora', task_name="my_module")
+        #     print(groups)
+
     def run(self):
         ''' tokenize the dataset and train the model
         '''
@@ -153,6 +174,65 @@ class PEFTModel:
         '''
         self.dataset = dataset
 
+    def set_peft_group(self, group, index, value=0):
+        ''' set the size of a PEFT module
+        index='double' means to double the rank/bn of LoRA or adapter
+        index='half' means to half the rank/bn of LoRA or adapter
+        index='remove' means to remove
+        index='set' means to set the rank to value
+        '''
+        group = [re.sub(r'\.(\d+)', r'[\1]', name) for name in group]
+        exec('module=self.model.' + group[0], locals(
+        ))  # save the var into locals(), which cannot be repetitive in function
+        mo = locals()['module']
+
+        origin_emb_size = mo.size()[1]
+        origin_rank_size = mo.size()[0]
+
+        target_rank_size = origin_rank_size
+        if index == 'double':
+            target_rank_size *= 2
+        elif index == 'half':
+            target_rank_size //= 2
+        elif index == 'remove':
+            target_rank_size = 0
+        elif index == 'set':
+            target_rank_size = value
+        else:
+            assert (0)
+
+        if origin_rank_size == target_rank_size:
+            return
+        if target_rank_size == 0:
+            assert (0)
+            # TODO: remove the module
+
+        for name in [name for name in group if 'lora_A' in name]:
+            weights = torch.rand(target_rank_size, origin_emb_size)
+            exec('self.model.' + name +
+                 '=Parameter(data=weights, requires_grad=True)')
+
+        for name in [name for name in group if 'lora_B' in name]:
+            weights = torch.rand(origin_emb_size, target_rank_size)
+            exec('self.model.' + name +
+                 '=Parameter(data=weights, requires_grad=True)')
+
+        for name in [
+                name for name in group
+                if 'adapter_down' in name and 'weight' in name
+        ]:
+            weights = torch.rand(target_rank_size, origin_emb_size)
+            exec('self.model.' + name +
+                 '=Parameter(data=weights, requires_grad=True)')
+
+        for name in [
+                name for name in group
+                if 'adapter_up' in name and 'weight' in name
+        ]:
+            weights = torch.rand(origin_emb_size, target_rank_size)
+            exec('self.model.' + name +
+                 '=Parameter(data=weights, requires_grad=True)')
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -165,4 +245,17 @@ if __name__ == '__main__':
     configs = PEFTSearchSpace(args).get_config()
     dataset = PEFTDataset('rotten_tomatoes', test_size=0.5).get_dataset()
     model = PEFTModel(configs, dataset)
-    model.run()
+    # model.run()
+    names = get_trainable_parameters(model.model)
+    groups = group_parameters_by_prefix(
+        names, opts='adapter', task_name="my_module")
+    sorted_groups = sorted(groups.items())
+    print([name[1] for name in sorted_groups])
+
+    print_trainable_parameters(model.model)
+    model.set_peft_group(sorted_groups[0][1], 'half')
+    model.set_peft_group(sorted_groups[1][1], 'half')
+    model.set_peft_group(sorted_groups[2][1], 'half')
+    model.set_peft_group(sorted_groups[3][1], 'half')
+
+    print_trainable_parameters(model.model)

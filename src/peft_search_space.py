@@ -20,17 +20,17 @@ class PEFTSearchSpace:
         '''
         self.args = args
         self.configs = {}
-        if args.base_lora:
+        if hasattr(args, 'base_lora') and args.base_lora:
             self.configs['lora'] = {
                 'type': 'lora',
                 'ranks': [args.base_lora for _ in range(MAX_MODEL_LAYER)]
             }
-        if args.base_adapter:
+        if hasattr(args, 'base_adapter') and args.base_adapter:
             self.configs['adapter'] = {
                 'type': 'adapter',
                 'bn': [args.base_adapter for _ in range(MAX_MODEL_LAYER)]
             }
-        if args.lora:
+        if hasattr(args, 'lora') and args.lora:
             self.configs['lora'] = {
                 'type': 'lora',
                 'ranks': args.lora,  # a list of ranks
@@ -38,7 +38,10 @@ class PEFTSearchSpace:
             self.configs['lora']['ranks'] = [
                 max(0, rank) for rank in self.configs['lora']['ranks']
             ]
-        if args.adapter:
+            num_zeros = MAX_MODEL_LAYER - len(self.configs['lora']['ranks'])
+            if num_zeros > 0:
+                self.configs['lora']['ranks'].extend([0] * num_zeros)
+        if hasattr(args, 'adapter') and args.adapter:
             self.configs['adapter'] = {
                 'type': 'adapter',
                 'bn': args.adapter,  # a list of bottleneck sizes
@@ -46,6 +49,9 @@ class PEFTSearchSpace:
             self.configs['adapter']['bn'] = [
                 max(0, bn) for bn in self.configs['adapter']['bn']
             ]
+            num_zeros = MAX_MODEL_LAYER - len(self.configs['adapter']['bn'])
+            if num_zeros > 0:
+                self.configs['adapter']['bn'].extend([0] * num_zeros)
 
     def get_config(self):
         return self.configs
