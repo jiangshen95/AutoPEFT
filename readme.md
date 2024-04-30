@@ -11,6 +11,7 @@ Hello AutoPEFT!
 - 实现架构搜索模块
 
 ## TODO
+- 构建评估 Benchmark
 - prefix-tuning
 - verbose
 - baseline：普通PEFT，比如LORA
@@ -18,3 +19,11 @@ Hello AutoPEFT!
 - 使用AUC
 - 物理结构剪枝
 - debug训练
+
+## 评估
+
+LLM 微调性能评估 Benchmark 构建，包含 NLG (Neural language generation) 和 NLU (Neural language understanding) 任务。
+
+- 任务：指令微调、Summarization、机器翻译等
+- 数据集：Alpaca 等
+- 评估度量：MT-bench 和 SuperGLUE 等。
