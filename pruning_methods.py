@@ -1,6 +1,7 @@
 '''
 
 '''
+import re
 
 
 def get_trainable_parameters(model):
@@ -46,7 +47,7 @@ def find_group_with_most_small_values(groups, model, p_method, top_p=1):
                 (model.state_dict()[name] == 0).sum().item() for name in names)
             group_values.append((group, names, num_zeros))
     elif p_method == 'values_below_threshold':
-        threshold = 0.001  # 可以根据需要调整阈值
+        threshold = 0.000001  # 可以根据需要调整阈值
         for group, names in groups.items():
             num_values_below_threshold = sum(
                 (model.state_dict()[name].abs() < threshold).sum().item()
@@ -71,7 +72,7 @@ def find_group_with_most_small_values(groups, model, p_method, top_p=1):
 
 def remove(path, model, methods):
     path = path.split('.')
-    print(path)
+    # print(path)
     module = model
     for part in path:  # 遍历到最后一个之前的路径部分，定位到父模块
         if part.isdigit():
@@ -82,7 +83,7 @@ def remove(path, model, methods):
             break
         else:
             module = getattr(module, part)
-        print(part)
+        # print(part)
 
 
 def remove_layers(groups, model):
@@ -102,7 +103,7 @@ def prune_model(model,
                 task_name='',
                 opts=['lora'],
                 p_method='zeros',
-                top_p=1,
+                top_p=3,
                 print_names=False):
     # 获取模型的可训练参数名
     names = get_trainable_parameters(model)
@@ -120,3 +121,9 @@ def prune_model(model,
         for group_info in sorted_groups:
             group, _, small_values = group_info
             print(f"Pruned group: {group}, with {small_values} small values.")
+    match = re.search('layer.(\d+)', sorted_groups[0][0])
+    if match:
+        layer_number = match.group(1)
+    else:
+        layer_number = -1
+    return layer_number

@@ -52,6 +52,8 @@ class PEFTSearchSpace:
             num_zeros = MAX_MODEL_LAYER - len(self.configs['adapter']['bn'])
             if num_zeros > 0:
                 self.configs['adapter']['bn'].extend([0] * num_zeros)
+        if hasattr(args, 'epochs') and args.epochs:
+            self.configs['epochs'] = args.epochs
 
     def get_config(self):
         return self.configs

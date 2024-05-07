@@ -1,6 +1,8 @@
 from src.run_model import PEFTModel
 from src.peft_search_space import PEFTSearchSpace
 from src.dataset_wrapper import PEFTDataset
+from pruning_methods import prune_model
+
 import argparse
 import logging
 import random
@@ -16,7 +18,7 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 logger.info('Start loading dataset')
-dataset = PEFTDataset('rotten_tomatoes', test_size=0.5).get_dataset()
+dataset = PEFTDataset('rotten_tomatoes', test_size=0.2).get_dataset()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lora', type=int, nargs='+')
@@ -29,41 +31,47 @@ searched_args = []
 searched_res = []
 
 # baseline
+logger.info('Start baseline')
+
+
+def wrapper(search_list):
+    args.lora = search_list
+    args.epochs = 5
+    # args.adapter = search_list
+    configs = PEFTSearchSpace(args).get_config()
+    model = PEFTModel(configs, dataset)
+    res = model.run()
+    logger.info(f'Result for {search_list}: {res}')
+
+
 search_list = [32] * 12
-logger.info(f'Start baseline for {search_list}')
-args.lora = search_list
-configs = PEFTSearchSpace(args).get_config()
-model = PEFTModel(configs, dataset)
-res = model.run()
-logger.info(f'Result for {search_list}: {res}')
+wrapper(search_list)
+search_list = [0, 0, 64, 64, 64, 64, 0, 64, 64, 0, 0, 0]
+wrapper(search_list)
+search_list = [64] * 6 + [0] * 6
+wrapper(search_list)
+search_list = [0] * 6 + [64] * 6
+wrapper(search_list)
 
-for _ in range(10):
-    search_list = [0] * 12
-    options = [16, 32, 64]
-    max_total = 32 * 12
-    current_total = 0
+search_list = [64] * 12
+total = 32 * 12
+for _ in range(0):
 
-    random.seed(int(time.time()))
-    for i in range(len(search_list)):
-        value = random.choice(options)
-        if current_total + value <= max_total:
-            search_list[i] = value
-            current_total += value
-        else:
-            value = max_total - current_total
-            search_list[i] = value
-            break
-    if current_total < max_total:
-        search_list[random.randint(0,
-                                   len(search_list) -
-                                   1)] += max_total - current_total
-
-    logger.info(f'Start searching for {search_list}')
+    if (sum(search_list) < total):
+        break
+    # logger.info(f'Start searching for {search_list}')
     args.lora = search_list
     configs = PEFTSearchSpace(args).get_config()
     model = PEFTModel(configs, dataset)
     res = model.run()
     logger.info(f'Result for {search_list}: {res}')
 
-    searched_args.append(search_list)
-    searched_res.append(res)
+    idx = prune_model(
+        model.model,
+        task_name='my_module',
+        opts=['lora'],
+        p_method='values_below_threshold',
+        top_p=12,
+        print_names=True)
+    logger.info(f'Pruned layer: {idx}')
+    search_list[int(idx)] = 0

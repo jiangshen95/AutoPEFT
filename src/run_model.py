@@ -70,9 +70,12 @@ class PEFTModel:
         self.model = AutoAdapterModel.from_pretrained(self.model_name)
         self.tokenizer = RobertaTokenizer.from_pretrained(self.model_name)
 
+        self.epochs = 1
+
         # calculate the number of labels
         num_labels = dataset["test"].features["label"].num_classes
-        self.model.add_classification_head(self.task_name, num_labels=num_labels)
+        self.model.add_classification_head(
+            self.task_name, num_labels=num_labels)
 
         lora_config = None
         adapter_config = None
@@ -85,19 +88,24 @@ class PEFTModel:
             )
         if configs.get("base_adapter"):
             adapter_config = SeqBnConfig(
-                reduction_factor=next(x for x in configs["adapter"]["bn"] if x != 0),
-            )
+                reduction_factor=next(
+                    x for x in configs["adapter"]["bn"] if x != 0),)
         if configs.get("lora"):
             lora_config = LoRAConfig(
                 r=next(x for x in configs["lora"]["ranks"] if x != 0),
                 alpha=next(x for x in configs["lora"]["ranks"] if x != 0),
                 dropout=0.1,
-                leave_out=[i for i, x in enumerate(configs["lora"]["ranks"]) if x == 0],
+                leave_out=[
+                    i for i, x in enumerate(configs["lora"]["ranks"]) if x == 0
+                ],
             )
         if configs.get("adapter"):
             adapter_config = SeqBnConfig(
-                reduction_factor=next(x for x in configs["adapter"]["bn"] if x != 0),
-                leave_out=[i for i, x in enumerate(configs["adapter"]["bn"]) if x == 0],
+                reduction_factor=next(
+                    x for x in configs["adapter"]["bn"] if x != 0),
+                leave_out=[
+                    i for i, x in enumerate(configs["adapter"]["bn"]) if x == 0
+                ],
             )
 
         if lora_config and adapter_config:
@@ -115,8 +123,7 @@ class PEFTModel:
         if configs.get("lora"):
             names = get_trainable_parameters(self.model)
             groups = group_parameters_by_prefix(
-                names, opts="lora", task_name="my_module"
-            )
+                names, opts="lora", task_name="my_module")
             sorted_groups = sorted(groups.items())
             sorted_groups = [name[1] for name in sorted_groups]
 
@@ -127,14 +134,18 @@ class PEFTModel:
         if configs.get("adapter"):
             names = get_trainable_parameters(self.model)
             groups = group_parameters_by_prefix(
-                names, opts="adapter", task_name="my_module"
-            )
+                names, opts="adapter", task_name="my_module")
             sorted_groups = sorted(groups.items())
             sorted_groups = [name[1] for name in sorted_groups]
 
             ranks = [r for r in configs["adapter"]["bn"] if r != 0]
             for group, r in zip(sorted_groups, ranks):
                 self.set_peft_group(group, "set", r)
+
+        if configs.get('epochs'):
+            self.epochs = configs['epochs']
+        else:
+            self.epochs = 1
 
     def run(self):
         """tokenize the dataset and train the model"""
@@ -144,8 +155,7 @@ class PEFTModel:
 
         def preprocess_function(examples):
             return self.tokenizer(
-                examples["text"], truncation=True, padding="max_length"
-            )
+                examples["text"], truncation=True, padding="max_length")
 
         def preprocess_function1(examples):
             return self.tokenizer(
@@ -157,33 +167,27 @@ class PEFTModel:
         print(self.dataset["test"])
         if "text" in self.dataset["test"].features:
             encoded_dataset_train = self.dataset["train"].map(
-                preprocess_function, batched=True
-            )
+                preprocess_function, batched=True)
             encoded_dataset_val = self.dataset["test"].map(
-                preprocess_function, batched=True
-            )
-        elif (
-            "sentence1" in self.dataset["test"].features
-            and "sentence2" in self.dataset["test"].features
-        ):
+                preprocess_function, batched=True)
+        elif ("sentence1" in self.dataset["test"].features and
+              "sentence2" in self.dataset["test"].features):
             encoded_dataset_train = self.dataset["train"].map(
-                preprocess_function1, batched=True
-            )
+                preprocess_function1, batched=True)
             encoded_dataset_val = self.dataset["test"].map(
-                preprocess_function1, batched=True
-            )
+                preprocess_function1, batched=True)
         else:
             assert 0
 
         training_args = TrainingArguments(
             output_dir="./results",
-            num_train_epochs=4,
+            num_train_epochs=self.epochs,
             per_device_train_batch_size=16,
             per_device_eval_batch_size=64,
             warmup_steps=10,
             weight_decay=0.01,
             logging_dir="./logs",
-            evaluation_strategy="epoch",
+            # evaluation_strategy="epoch",
         )
 
         def compute_metrics(pred):
@@ -216,15 +220,16 @@ class PEFTModel:
         index='remove' means to remove
         index='set' means to set the rank to value
         """
-        group = [re.sub(r"\.(\d+)", r"[\1]", name) for name in group]
         # exec(
-            # "module=self.model." + group[0], locals()
+        # "module=self.model." + group[0], locals()
         # )  # save the var into locals(), which cannot be repetitive in function
         # mo = locals()["module"]
-        
+
         # NOTE: change to this
-        self.model : nn.Module
-        mo = self.model.get_parameter(group[0]) # or mo = self.model.__getattr__(group[0])
+        self.model: nn.Module
+        mo = self.model.get_parameter(
+            group[0])  # or mo = self.model.__getattr__(group[0])
+        group = [re.sub(r"\.(\d+)", r"[\1]", name) for name in group]
 
         origin_emb_size = mo.size()[1]
         origin_rank_size = mo.size()[0]
@@ -248,29 +253,51 @@ class PEFTModel:
             # TODO: remove the module
 
         for name in [name for name in group if "lora_A" in name]:
-            weights = torch.zeros(target_rank_size, origin_emb_size)
-            nn.init.kaiming_uniform_(
-                weights, a=math.sqrt(5)
-            )  # TODO: use rand will unable to train, use kaiming init is weaker than default(0.74 vs 0.77 on rotten_tomatoes 4 epoch)
-            exec("self.model." + name + "=Parameter(data=weights, requires_grad=True)")
+            # weights = torch.zeros(target_rank_size, origin_emb_size)
+            # nn.init.kaiming_uniform_(
+            #     weights, a=math.sqrt(5)
+            # )  # TODO: use rand will unable to train, use kaiming init is weaker than default(0.74 vs 0.77 on rotten_tomatoes 4 epoch)
+            weights = torch.randn(target_rank_size, origin_emb_size)
+            exec("self.model." + name +
+                 "=nn.Parameter(data=weights, requires_grad=True)")
 
         for name in [name for name in group if "lora_B" in name]:
             weights = torch.zeros(origin_emb_size, target_rank_size)
-            exec("self.model." + name + "=Parameter(data=weights, requires_grad=True)")
+            exec("self.model." + name +
+                 "=nn.Parameter(data=weights, requires_grad=True)")
 
         for name in [
-            name for name in group if "adapter_down" in name and "weight" in name
+                name for name in group
+                if "adapter_down" in name and "weight" in name
         ]:
-            weights = torch.rand(
-                target_rank_size, origin_emb_size
-            )  # TODO: how to init?
-            exec("self.model." + name + "=Parameter(data=weights, requires_grad=True)")
+            weights = torch.rand(target_rank_size,
+                                 origin_emb_size)  # TODO: how to init?
+            exec("self.model." + name +
+                 "=nn.Parameter(data=weights, requires_grad=True)")
 
         for name in [
-            name for name in group if "adapter_up" in name and "weight" in name
+                name for name in group
+                if "adapter_down" in name and "bias" in name
+        ]:
+            weights = torch.zeros(target_rank_size)
+            exec("self.model." + name +
+                 "=nn.Parameter(data=weights, requires_grad=True)")
+
+        for name in [
+                name for name in group
+                if "adapter_up" in name and "weight" in name
         ]:
             weights = torch.rand(origin_emb_size, target_rank_size)
-            exec("self.model." + name + "=Parameter(data=weights, requires_grad=True)")
+            exec("self.model." + name +
+                 "=nn.Parameter(data=weights, requires_grad=True)")
+
+        for name in [
+                name for name in group
+                if "adapter_up" in name and "bias" in name
+        ]:
+            weights = torch.zeros(origin_emb_size)
+            exec("self.model." + name +
+                 "=nn.Parameter(data=weights, requires_grad=True)")
 
 
 if __name__ == "__main__":
