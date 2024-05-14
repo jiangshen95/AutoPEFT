@@ -27,3 +27,9 @@ LLM 微调性能评估 Benchmark 构建，包含 NLG (Neural language generation
 - 任务：指令微调、Summarization、机器翻译等
 - 数据集：Alpaca 等
 - 评估度量：MT-bench 和 SuperGLUE 等。
+
+可能使用的数据集: GLUE, super-GLUE, 
+- BigBench https://github.com/google/BIG-bench 谷歌的大模型的测试基准
+- Commonsense Reasoning Benchmark https://commonsense.run/datasets/ 常识推理
+- Squad2.0 https://rajpurkar.github.io/SQuAD-explorer/explore/v2.0/dev/ 问答
+- MBPP, HumanEval 代码生成
