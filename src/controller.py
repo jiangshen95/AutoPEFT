@@ -44,34 +44,55 @@ def wrapper(search_list):
     logger.info(f'Result for {search_list}: {res}')
 
 
-search_list = [32] * 12
-wrapper(search_list)
-search_list = [0, 0, 64, 64, 64, 64, 0, 64, 64, 0, 0, 0]
-wrapper(search_list)
-search_list = [64] * 6 + [0] * 6
-wrapper(search_list)
-search_list = [0] * 6 + [64] * 6
-wrapper(search_list)
+def wrapper2(search_list, search_list2):
+    args = parser.parse_args()
 
-search_list = [64] * 12
-total = 32 * 12
-for _ in range(0):
-
-    if (sum(search_list) < total):
-        break
-    # logger.info(f'Start searching for {search_list}')
     args.lora = search_list
+    args.adapter = search_list2
+    args.epochs = 5
     configs = PEFTSearchSpace(args).get_config()
     model = PEFTModel(configs, dataset)
     res = model.run()
-    logger.info(f'Result for {search_list}: {res}')
+    logger.info(f'Result for {search_list, search_list2}: {res}')
 
-    idx = prune_model(
+
+search_list = [32] * 12
+search_list2 = [256] * 12
+wrapper2(search_list, search_list2)
+# search_list = [32] * 12
+# wrapper(search_list)
+# search_list = [0, 0, 64, 64, 64, 64, 0, 64, 64, 0, 0, 0]
+# wrapper(search_list)
+# search_list = [64] * 6 + [0] * 6
+# wrapper(search_list)
+# search_list = [0] * 6 + [64] * 6
+# wrapper(search_list)
+
+search_list = [64] * 12
+search_list2 = [64] * 12
+total = 32 * 12 * 2
+for _ in range(10):
+
+    if (sum(search_list + search_list2) < total):
+        break
+    # logger.info(f'Start searching for {search_list}')
+    args.lora = search_list
+    args.adapter = search_list2
+    args.epochs = 10
+    configs = PEFTSearchSpace(args).get_config()
+    model = PEFTModel(configs, dataset)
+    res = model.run()
+    logger.info(f'Result for {search_list, search_list2}: {res}')
+
+    idx, idt = prune_model(
         model.model,
         task_name='my_module',
-        opts=['lora'],
-        p_method='values_below_threshold',
+        opts=['lora', 'adapter'],
+        p_method='minimum_weight',
         top_p=12,
         print_names=True)
-    logger.info(f'Pruned layer: {idx}')
-    search_list[int(idx)] = 0
+    logger.info(f'Pruned layer: {idx, idt}')
+    if idt == 'lora':
+        search_list[int(idx)] = 0
+    else:
+        search_list2[int(idx)] = 0

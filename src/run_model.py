@@ -28,6 +28,7 @@ from transformers import RobertaTokenizer, TrainingArguments
 from pruning_methods import get_trainable_parameters, group_parameters_by_prefix
 from src.dataset_wrapper import PEFTDataset
 from src.peft_search_space import PEFTSearchSpace
+from sklearn.metrics import f1_score
 
 
 def print_trainable_parameters(model):
@@ -194,7 +195,9 @@ class PEFTModel:
             labels = pred.label_ids
             preds = pred.predictions.argmax(-1)
             acc = np.sum(preds == labels) / len(labels)
-            return {"accuracy": acc}
+            f1 = f1_score(labels, preds, average='weighted')
+            final_score = 0.5 * acc + 0.5 * f1
+            return {"accuracy": acc, "f1": f1, "final_score": final_score}
 
         self.trainer = AdapterTrainer(
             model=self.model,
@@ -270,8 +273,8 @@ class PEFTModel:
                 name for name in group
                 if "adapter_down" in name and "weight" in name
         ]:
-            weights = torch.rand(target_rank_size,
-                                 origin_emb_size)  # TODO: how to init?
+            weights = torch.randn(target_rank_size,
+                                  origin_emb_size)  # TODO: how to init?
             exec("self.model." + name +
                  "=nn.Parameter(data=weights, requires_grad=True)")
 
@@ -287,7 +290,7 @@ class PEFTModel:
                 name for name in group
                 if "adapter_up" in name and "weight" in name
         ]:
-            weights = torch.rand(origin_emb_size, target_rank_size)
+            weights = torch.randn(origin_emb_size, target_rank_size)
             exec("self.model." + name +
                  "=nn.Parameter(data=weights, requires_grad=True)")
 
@@ -306,6 +309,7 @@ if __name__ == "__main__":
     parser.add_argument("--adapter", type=int, nargs="+")
     parser.add_argument("--base_lora", type=int)
     parser.add_argument("--base_adapter", type=int)
+    parser.add_argument("--epochs", type=int)
     args = parser.parse_args()
 
     configs = PEFTSearchSpace(args).get_config()

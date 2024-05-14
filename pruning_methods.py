@@ -119,4 +119,8 @@ def prune_model(model,
         layer_number = match.group(1)
     else:
         layer_number = -1
-    return layer_number
+    if 'lora' in sorted_groups[0][0]:
+        layer_type = 'lora'
+    else:
+        layer_type = 'adapter'
+    return layer_number, layer_type
