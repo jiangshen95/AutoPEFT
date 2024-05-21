@@ -63,7 +63,7 @@ class PEFTModel:
             dataset: a dataset object
         """
         self.trainer = None
-        self.model_name = "roberta-base"
+        self.model_name = "meta-llama/Meta-Llama-3-8B"
         self.task_name = "mytask"
 
         self.configs = configs
