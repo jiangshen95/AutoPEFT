@@ -23,7 +23,7 @@ from adapters import (
     PrefixTuningConfig,
     SeqBnConfig,
 )
-from transformers import RobertaTokenizer, TrainingArguments
+from transformers import RobertaTokenizer, TrainingArguments, AutoTokenizer
 
 from pruning_methods import get_trainable_parameters, group_parameters_by_prefix
 from src.dataset_wrapper import PEFTDataset
@@ -69,7 +69,7 @@ class PEFTModel:
         self.configs = configs
         self.dataset = dataset
         self.model = AutoAdapterModel.from_pretrained(self.model_name)
-        self.tokenizer = RobertaTokenizer.from_pretrained(self.model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
         self.epochs = 1
 
