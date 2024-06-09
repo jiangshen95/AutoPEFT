@@ -57,21 +57,9 @@ def wrapper2(search_list, search_list2):
 
 
 search_list = [32] * 12
-search_list2 = [256] * 12
-wrapper2(search_list, search_list2)
-# search_list = [32] * 12
-# wrapper(search_list)
-# search_list = [0, 0, 64, 64, 64, 64, 0, 64, 64, 0, 0, 0]
-# wrapper(search_list)
-# search_list = [64] * 6 + [0] * 6
-# wrapper(search_list)
-# search_list = [0] * 6 + [64] * 6
-# wrapper(search_list)
+wrapper(search_list)
 
-search_list = [64] * 12
-search_list2 = [64] * 12
-total = 32 * 12 * 2
-for _ in range(10):
+for _ in range(0):
 
     if (sum(search_list + search_list2) < total):
         break
