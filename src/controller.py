@@ -18,7 +18,8 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 logger.info('Start loading dataset')
-dataset = PEFTDataset('rotten_tomatoes', test_size=0.2).get_dataset()
+dataset = PEFTDataset(
+    'rotten_tomatoes', instructs=True, test_size=0.2).get_dataset()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lora', type=int, nargs='+')
@@ -33,15 +34,28 @@ searched_res = []
 # baseline
 logger.info('Start baseline')
 
+print(dataset["train"]['text'][0])
+
+
+def save_gradients(model):
+    gradients = {}
+    for name, param in model.model.named_parameters():
+        if param.grad is not None:
+            gradients[name] = param.grad.clone().cpu().numpy()
+    return gradients
+
 
 def wrapper(search_list):
     args.lora = search_list
-    args.epochs = 5
+    args.epochs = 1
+    args.instructs = 1
     # args.adapter = search_list
     configs = PEFTSearchSpace(args).get_config()
     model = PEFTModel(configs, dataset)
     res = model.run()
+    grad = save_gradients(model)
     logger.info(f'Result for {search_list}: {res}')
+    logger.info(f'grad: {grad}')
 
 
 def wrapper2(search_list, search_list2):
@@ -50,6 +64,7 @@ def wrapper2(search_list, search_list2):
     args.lora = search_list
     args.adapter = search_list2
     args.epochs = 5
+    args.instructs = 1
     configs = PEFTSearchSpace(args).get_config()
     model = PEFTModel(configs, dataset)
     res = model.run()

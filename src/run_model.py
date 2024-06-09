@@ -71,6 +71,7 @@ class PEFTModel:
         self.model = AutoAdapterModel.from_pretrained(self.model_name)
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
 
+        self.instructs = 0
         self.epochs = 1
 
         # calculate the number of labels
@@ -120,6 +121,7 @@ class PEFTModel:
 
         self.model.add_adapter("my_module", config=peft_config)
         self.model.train_adapter("my_module")
+        self.model = self.model.half()
 
         if configs.get("lora"):
             names = get_trainable_parameters(self.model)
@@ -148,15 +150,25 @@ class PEFTModel:
         else:
             self.epochs = 1
 
+        if configs.get("instructs"):
+            self.instructs = 1
+
     def run(self):
         """tokenize the dataset and train the model"""
         assert self.dataset is not None
         assert self.model is not None
         assert self.tokenizer is not None
 
+        self.tokenizer.pad_token = self.tokenizer.eos_token
+
         def preprocess_function(examples):
+            print(examples)
             return self.tokenizer(
-                examples["text"], truncation=True, padding="max_length")
+                examples["text"],
+                truncation=True,
+                padding="max_length",
+                max_length=128,
+            )
 
         def preprocess_function1(examples):
             return self.tokenizer(
@@ -165,7 +177,6 @@ class PEFTModel:
                 padding="max_length",
             )
 
-        print(self.dataset["test"])
         if "text" in self.dataset["test"].features:
             encoded_dataset_train = self.dataset["train"].map(
                 preprocess_function, batched=True)
@@ -181,12 +192,13 @@ class PEFTModel:
             assert 0
 
         print(encoded_dataset_train.shape)
+        print(encoded_dataset_train)
 
         training_args = TrainingArguments(
             output_dir="./results",
             num_train_epochs=self.epochs,
             per_device_train_batch_size=16,
-            per_device_eval_batch_size=64,
+            per_device_eval_batch_size=16,
             warmup_steps=10,
             weight_decay=0.01,
             logging_dir="./logs",
@@ -312,6 +324,7 @@ if __name__ == "__main__":
     parser.add_argument("--base_lora", type=int)
     parser.add_argument("--base_adapter", type=int)
     parser.add_argument("--epochs", type=int)
+    parser.add_argument("--instructs")
     args = parser.parse_args()
 
     configs = PEFTSearchSpace(args).get_config()

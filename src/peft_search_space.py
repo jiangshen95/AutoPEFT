@@ -58,6 +58,8 @@ class PEFTSearchSpace:
                 self.configs["adapter"]["bn"].extend([0] * num_zeros)
         if hasattr(args, "epochs") and args.epochs:
             self.configs["epochs"] = args.epochs
+        if hasattr(args, "instructs"):
+            self.configs["instructs"] = 1  # need instruct for llama
 
     def get_config(self):
         return self.configs
