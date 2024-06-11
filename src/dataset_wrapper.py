@@ -39,8 +39,7 @@ class PEFTDataset():
             return example
 
         self.dataset = self.dataset.map(add_prefix)
-        print(self.dataset)
-        print(self.dataset['train']['text'][:10])
+        # print(self.dataset['train']['text'][:10])
 
     def get_dataset(self):
         return self.dataset

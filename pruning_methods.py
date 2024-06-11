@@ -5,6 +5,7 @@ grouping parameters by prefix, finding groups with the smallest values, and more
 
 '''
 import re
+import numpy as np
 
 
 def get_trainable_parameters(model):
@@ -39,14 +40,20 @@ def group_parameters_by_prefix(names, opts=[], print_names=False, task_name=''):
     return groups
 
 
-def find_group_with_most_small_values(groups, model, p_method, top_p=1):
-    """Find groups with the smallest values"""
+def find_group_with_most_small_values(groups,
+                                      model,
+                                      p_method,
+                                      top_p=1,
+                                      gradients=None):
+    """Find groups with the smallest values or smallest summed gradients"""
     group_values = []
+
     if p_method == 'zeros':
         for group, names in groups.items():
             num_zeros = sum(
                 (model.state_dict()[name] == 0).sum().item() for name in names)
             group_values.append((group, names, num_zeros))
+
     elif p_method == 'values_below_threshold':
         threshold = 0.000001  # 可以根据需要调整阈值
         for group, names in groups.items():
@@ -54,12 +61,22 @@ def find_group_with_most_small_values(groups, model, p_method, top_p=1):
                 (model.state_dict()[name].abs() < threshold).sum().item()
                 for name in names)
             group_values.append((group, names, num_values_below_threshold))
+
     elif p_method == 'minimum_weight':
         for group, names in groups.items():
             min_weight = min((model.state_dict()[name].pow(2).sum() /
                               model.state_dict()[name].numel()).item()
                              for name in names)
             group_values.append((group, names, min_weight))
+
+    elif p_method == 'gradient':
+        if gradients is None:
+            raise ValueError(
+                "Gradients must be provided for 'gradient' p_method")
+        for group, names in groups.items():
+            total_gradient = sum(
+                np.abs(gradients[name]).sum().item() for name in names)
+            group_values.append((group, names, total_gradient))
 
     sorted_groups = sorted(
         group_values,
@@ -102,19 +119,20 @@ def prune_model(model,
                 opts=['lora'],
                 p_method='zeros',
                 top_p=3,
-                print_names=False):
+                print_names=False,
+                gradients=None):
     """Prune the model's parameters"""
     names = get_trainable_parameters(model)
     groups = group_parameters_by_prefix(
         names, opts=opts, print_names=print_names, task_name=task_name)
     sorted_groups = find_group_with_most_small_values(groups, model, p_method,
-                                                      top_p)
+                                                      top_p, gradients)
     remove_layers(sorted_groups, model)
     if print_names:
         for group_info in sorted_groups:
             group, _, small_values = group_info
             print(f"Pruned group: {group}, with {small_values} small values.")
-    match = re.search('layer.(\d+)', sorted_groups[0][0])
+    match = re.search('layers.(\d+)', sorted_groups[0][0])
     if match:
         layer_number = match.group(1)
     else:

@@ -29,6 +29,7 @@ from pruning_methods import get_trainable_parameters, group_parameters_by_prefix
 from src.dataset_wrapper import PEFTDataset
 from src.peft_search_space import PEFTSearchSpace
 from sklearn.metrics import f1_score
+from trainer_with_grad import TrainerWithGrad
 
 
 def print_trainable_parameters(model):
@@ -133,7 +134,7 @@ class PEFTModel:
 
         self.model.add_adapter("my_module", config=peft_config)
         self.model.train_adapter("my_module")
-        self.model = self.model.half()
+        # self.model = self.model.half()
 
         if configs.get("lora"):
             names = get_trainable_parameters(self.model)
@@ -226,13 +227,13 @@ class PEFTModel:
             final_score = 0.5 * acc + 0.5 * f1
             return {"accuracy": acc, "f1": f1, "final_score": final_score}
 
-        self.trainer = Trainer(
+        self.trainer = TrainerWithGrad(
             model=self.model,
             args=training_args,
             train_dataset=self.dataset['train'],
             eval_dataset=self.dataset['test'],
             compute_metrics=compute_metrics,
-            # callbacks=[GradientCaptureCallback(self)]
+            callbacks=[GradientCaptureCallback(self)],
             tokenizer=self.tokenizer,
         )
 
@@ -242,11 +243,11 @@ class PEFTModel:
                 param.register_hook(lambda grad, name=name: self.gradients.
                                     update({name: grad.clone().cpu().numpy()}))
 
-        self.trainer.train()
+        gradients = self.trainer.train()
         metrics = self.trainer.evaluate()
         print(metrics)
 
-        return metrics
+        return metrics, gradients
 
     def add_dataset(self, dataset):
         """add a dataset"""
@@ -337,6 +338,10 @@ class PEFTModel:
             weights = torch.zeros(origin_emb_size)
             exec("self.model." + name +
                  "=nn.Parameter(data=weights, requires_grad=True)")
+
+    def half(self):
+        self.model = self.model.half()
+        return self
 
 
 if __name__ == "__main__":

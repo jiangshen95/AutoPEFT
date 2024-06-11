@@ -10,7 +10,8 @@ import time
 
 logger = logging.getLogger('controller')
 logger.setLevel(logging.INFO)  # 设置日志级别
-file_handler = logging.FileHandler('output.log', mode='w')
+time_str = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
+file_handler = logging.FileHandler(f'outputs/output_{time_str}.log', mode='w')
 file_handler.setLevel(logging.INFO)
 formatter = logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -72,31 +73,24 @@ def wrapper2(search_list, search_list2):
     logger.info(f'Result for {search_list, search_list2}: {res}')
 
 
-search_list = [32] * 12
-wrapper(search_list)
+search_list = [32] * 32
 
-for _ in range(0):
-
-    if (sum(search_list + search_list2) < total):
-        break
-    # logger.info(f'Start searching for {search_list}')
+for _ in range(10):
+    logger.info(f'Start searching for {search_list}')
     args.lora = search_list
-    args.adapter = search_list2
-    args.epochs = 10
+    args.epochs = 1
     configs = PEFTSearchSpace(args).get_config()
     model = PEFTModel(configs, dataset).half()
-    res = model.run()
-    logger.info(f'Result for {search_list, search_list2}: {res}')
+    res, gradients = model.run()
+    logger.info(f'Result for {search_list}: {res}')
 
     idx, idt = prune_model(
         model.model,
         task_name='my_module',
         opts=['lora', 'adapter'],
-        p_method='minimum_weight',
+        p_method='gradient',
         top_p=12,
-        print_names=True)
+        print_names=True,
+        gradients=gradients)
     logger.info(f'Pruned layer: {idx, idt}')
-    if idt == 'lora':
-        search_list[int(idx)] = 0
-    else:
-        search_list2[int(idx)] = 0
+    search_list[int(idx)] = 0
