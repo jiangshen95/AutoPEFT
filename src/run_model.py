@@ -23,7 +23,7 @@ from adapters import (
     PrefixTuningConfig,
     SeqBnConfig,
 )
-from transformers import RobertaTokenizer, TrainingArguments, AutoTokenizer
+from transformers import RobertaTokenizer, TrainingArguments, AutoTokenizer, TrainerCallback, Trainer
 
 from pruning_methods import get_trainable_parameters, group_parameters_by_prefix
 from src.dataset_wrapper import PEFTDataset
@@ -41,6 +41,17 @@ def print_trainable_parameters(model):
     print(
         f"trainable params: {trainable_params} || all params: {all_param} || trainable%: {100 * trainable_params / all_param:.2f}"
     )
+
+
+class GradientCaptureCallback(TrainerCallback):
+
+    def __init__(self, model_trainer):
+        self.model_trainer = model_trainer
+
+    def on_epoch_end(self, args, state, control, **kwargs):
+        print(f"Epoch {state.epoch} gradients:")
+        for name, grad in self.model_trainer.gradients.items():
+            print(f"{name}: {grad}")
 
 
 class PEFTModel:
@@ -73,6 +84,7 @@ class PEFTModel:
 
         self.instructs = 0
         self.epochs = 1
+        self.gradients = {}
 
         # calculate the number of labels
         num_labels = dataset["test"].features["label"].num_classes
@@ -167,6 +179,7 @@ class PEFTModel:
                 examples["text"],
                 truncation=True,
                 padding="max_length",
+                #batched=True,
                 max_length=128,
             )
 
@@ -177,22 +190,22 @@ class PEFTModel:
                 padding="max_length",
             )
 
-        if "text" in self.dataset["test"].features:
-            encoded_dataset_train = self.dataset["train"].map(
-                preprocess_function, batched=True)
-            encoded_dataset_val = self.dataset["test"].map(
-                preprocess_function, batched=True)
-        elif ("sentence1" in self.dataset["test"].features and
-              "sentence2" in self.dataset["test"].features):
-            encoded_dataset_train = self.dataset["train"].map(
-                preprocess_function1, batched=True)
-            encoded_dataset_val = self.dataset["test"].map(
-                preprocess_function1, batched=True)
-        else:
-            assert 0
+        # if "text" in self.dataset["test"].features:
+        #     encoded_dataset_train = self.dataset["train"].map(
+        #         preprocess_function, batched=True)
+        #     encoded_dataset_val = self.dataset["test"].map(
+        #         preprocess_function, batched=True)
+        # elif ("sentence1" in self.dataset["test"].features and
+        #       "sentence2" in self.dataset["test"].features):
+        #     encoded_dataset_train = self.dataset["train"].map(
+        #         preprocess_function1, batched=True)
+        #     encoded_dataset_val = self.dataset["test"].map(
+        #         preprocess_function1, batched=True)
+        # else:
+        #     assert 0
 
-        print(encoded_dataset_train.shape)
-        print(encoded_dataset_train)
+        # print(encoded_dataset_train.shape)
+        # print(encoded_dataset_train)
 
         training_args = TrainingArguments(
             output_dir="./results",
@@ -213,17 +226,26 @@ class PEFTModel:
             final_score = 0.5 * acc + 0.5 * f1
             return {"accuracy": acc, "f1": f1, "final_score": final_score}
 
-        self.trainer = AdapterTrainer(
+        self.trainer = Trainer(
             model=self.model,
             args=training_args,
-            train_dataset=encoded_dataset_train,
-            eval_dataset=encoded_dataset_val,
+            train_dataset=self.dataset['train'],
+            eval_dataset=self.dataset['test'],
             compute_metrics=compute_metrics,
+            # callbacks=[GradientCaptureCallback(self)]
+            tokenizer=self.tokenizer,
         )
+
+        # Register hooks to capture gradients
+        for name, param in self.model.named_parameters():
+            if param.requires_grad:
+                param.register_hook(lambda grad, name=name: self.gradients.
+                                    update({name: grad.clone().cpu().numpy()}))
 
         self.trainer.train()
         metrics = self.trainer.evaluate()
         print(metrics)
+
         return metrics
 
     def add_dataset(self, dataset):

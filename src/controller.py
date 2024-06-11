@@ -19,7 +19,8 @@ logger.addHandler(file_handler)
 
 logger.info('Start loading dataset')
 dataset = PEFTDataset(
-    'rotten_tomatoes', instructs=True, test_size=0.2).get_dataset()
+    'rotten_tomatoes', instructs=True, test_size=0.2,
+    train_size=0.3).get_dataset()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lora', type=int, nargs='+')
@@ -47,7 +48,7 @@ def save_gradients(model):
 
 def wrapper(search_list):
     args.lora = search_list
-    args.epochs = 1
+    args.epochs = 5
     args.instructs = 1
     # args.adapter = search_list
     configs = PEFTSearchSpace(args).get_config()
@@ -83,7 +84,7 @@ for _ in range(0):
     args.adapter = search_list2
     args.epochs = 10
     configs = PEFTSearchSpace(args).get_config()
-    model = PEFTModel(configs, dataset)
+    model = PEFTModel(configs, dataset).half()
     res = model.run()
     logger.info(f'Result for {search_list, search_list2}: {res}')
 
