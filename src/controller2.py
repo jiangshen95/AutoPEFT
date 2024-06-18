@@ -1,3 +1,9 @@
+'''
+this module is to run glue datast and test the performance of the pruning.
+['cola', 'sst2', 'mrpc', 'qqp', 'stsb', 'qnli', 'rte', 'wnli'] are implemented.
+['mnli','ax'] are not implemented due to the structure of the dataset.
+for test, we can use small dataset by setting train_size and test_size.
+'''
 from src.run_model import PEFTModel
 from src.peft_search_space import PEFTSearchSpace
 from src.dataset_wrapper import PEFTDataset
@@ -9,11 +15,17 @@ import argparse
 import logging
 import time
 from copy import deepcopy
+import os
 
 logger = logging.getLogger('controller')
 logger.setLevel(logging.INFO)  # 设置日志级别
 time_str = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
-file_handler = logging.FileHandler(f'outputs/output_{time_str}.log', mode='w')
+day_str = time.strftime('%Y-%m-%d', time.localtime())
+output_dir = f'outputs/{day_str}'
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+file_handler = logging.FileHandler(
+    f'outputs/{day_str}/output_{time_str}.log', mode='w')
 file_handler.setLevel(logging.INFO)
 formatter = logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -34,14 +46,6 @@ searched_res = []
 logger.info('Start baseline')
 
 
-def save_gradients(model):
-    gradients = {}
-    for name, param in model.model.named_parameters():
-        if param.grad is not None:
-            gradients[name] = param.grad.clone().cpu().numpy()
-    return gradients
-
-
 def wrapper(search_list):
     global model, res, configs, gradients, dataset
     args.lora = search_list
@@ -50,21 +54,8 @@ def wrapper(search_list):
     # args.adapter = search_list
     configs = PEFTSearchSpace(args).get_config()
     model = PEFTModel(configs, dataset).half()
-    res, gradients = model.run()
-    logger.info(f'Result for {search_list}: {res}')
-
-
-def wrapper2(search_list, search_list2):
-    args = parser.parse_args()
-
-    args.lora = search_list
-    args.adapter = search_list2
-    args.epochs = 5
-    args.instructs = 0
-    configs = PEFTSearchSpace(args).get_config()
-    model = PEFTModel(configs, dataset)
-    res = model.run()
-    logger.info(f'Result for {search_list, search_list2}: {res}')
+    res, gradients, activations = model.run()
+    logger.info(f'Result {res} for {search_list}')
 
 
 to_load = ['cola', 'sst2', 'mrpc', 'qqp', 'stsb', 'qnli', 'rte', 'wnli']

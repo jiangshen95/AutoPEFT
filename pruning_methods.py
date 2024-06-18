@@ -45,7 +45,7 @@ def find_group_with_most_small_values(groups,
                                       p_method,
                                       top_p=1,
                                       gradients=None,
-                                      hessians=None):
+                                      activations=None):
     """Find groups with the smallest values or smallest summed gradients"""
     group_values = []
 
@@ -94,7 +94,7 @@ def find_group_with_most_small_values(groups,
             weight = model.state_dict()[name].cpu().numpy(
             )  # Convert weight to numpy array
             norm_gradients[name] = grad * weight
-
+            
         # Sum normalized gradients for each group
         for group, names in groups.items():
             total_snip = sum(
@@ -131,17 +131,18 @@ def find_group_with_most_small_values(groups,
         for group, names in groups.items():
             activation_scores = []
             for name in names:
-                activation = activations[name]
+                activation = activations["module." + name]
                 # 计算激活值的重要性评分，可以使用不同的统计量，这里用平均值
                 activation_score = activation.mean().item()
                 activation_scores.append(activation_score)
+                break
             total_activation_score = sum(activation_scores)
             group_values.append((group, names, total_activation_score))
 
     sorted_groups = sorted(
         group_values,
         key=lambda x: x[2],
-        reverse=(p_method not in ['minimum_weight']))[:top_p]
+        reverse=(p_method in ['zeros', 'values_below_threshold']))[:top_p]
 
     return sorted_groups
 
@@ -188,7 +189,7 @@ def prune_model(model,
     groups = group_parameters_by_prefix(
         names, opts=opts, print_names=print_names, task_name=task_name)
     sorted_groups = find_group_with_most_small_values(groups, model, p_method,
-                                                      top_p, gradients)
+                                                      top_p, gradients, activations)
     remove_layers(sorted_groups, model)
     if print_names:
         for group_info in sorted_groups:

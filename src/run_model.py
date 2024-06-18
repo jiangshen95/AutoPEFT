@@ -103,7 +103,10 @@ class PEFTModel:
         self.gradients = {}
 
         # calculate the number of labels
-        num_labels = dataset["train"].features["label"].num_classes
+        if hasattr(dataset["train"].features["label"], "num_classes"):
+            num_labels = dataset["train"].features["label"].num_classes
+        else:
+            num_labels = len(set(dataset["train"]["label"]))
         print("number of label classes:", num_labels)
         self.model.add_classification_head(
             self.task_name, num_labels=num_labels)

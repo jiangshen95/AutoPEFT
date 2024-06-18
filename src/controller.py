@@ -8,11 +8,18 @@ import argparse
 import logging
 import time
 from copy import deepcopy
+import os
+import torch
 
 logger = logging.getLogger('controller')
 logger.setLevel(logging.INFO)  # 设置日志级别
 time_str = time.strftime('%Y-%m-%d_%H:%M:%S', time.localtime())
-file_handler = logging.FileHandler(f'outputs/output_{time_str}.log', mode='w')
+day_str = time.strftime('%Y-%m-%d', time.localtime())
+output_dir = f'outputs/{day_str}'
+if not os.path.exists(output_dir):
+    os.makedirs(output_dir)
+file_handler = logging.FileHandler(
+    f'outputs/{day_str}/output_{time_str}.log', mode='w')
 file_handler.setLevel(logging.INFO)
 formatter = logging.Formatter(
     '%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -20,8 +27,7 @@ file_handler.setFormatter(formatter)
 logger.addHandler(file_handler)
 
 logger.info('Start loading dataset')
-dataset = PEFTDataset(
-    'glue', 'cola', test_size=0.2, train_size=0.3).get_dataset()
+dataset = PEFTDataset('glue', 'cola', test_size=1, train_size=1).get_dataset()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lora', type=int, nargs='+')
@@ -37,47 +43,59 @@ searched_res = []
 logger.info('Start baseline')
 
 
-def save_gradients(model):
-    gradients = {}
-    for name, param in model.model.named_parameters():
-        if param.grad is not None:
-            gradients[name] = param.grad.clone().cpu().numpy()
-    return gradients
-
-
-def wrapper(search_list):
-    global model, res, configs, gradients
-    args.lora = search_list
+def wrapper(search_list, idt='lora'):
+    global model, res, configs, gradients, activations
+    args = parser.parse_args(args=[])
+    if idt == 'lora':
+        args.lora = search_list
+    elif idt == 'adapter':
+        args.adapter = search_list
     args.epochs = 1
     args.instructs = 1
-    # args.adapter = search_list
     configs = PEFTSearchSpace(args).get_config()
     model = PEFTModel(configs, dataset).half()
-    res, gradients = model.run()
-    logger.info(f'Result for {search_list}: {res}')
+    res, gradients, activations = model.run()
+    logger.info(f'Result {res} for {search_list}')
+    model = None
+    gradients = None
+    activations = None
+    torch.cuda.empty_cache()
 
 
 def wrapper2(search_list, search_list2):
-    args = parser.parse_args()
-
+    global model, res, configs, gradients, activations
+    args = parser.parse_args(args=[])
     args.lora = search_list
     args.adapter = search_list2
-    args.epochs = 5
+    args.epochs = 1
     args.instructs = 1
     configs = PEFTSearchSpace(args).get_config()
     model = PEFTModel(configs, dataset)
-    res = model.run()
+    res, gradients, activations = model.run()
     logger.info(f'Result for {search_list, search_list2}: {res}')
 
 
-prune_turn = 3
+# logger.info("Start adapter baseline")
+# wrapper([32] * 16, 'adapter')
+
+# logger.info('Start lora baseline')
+# wrapper([32] * 32, 'lora')
+
+prune_turn = 10
 logger.info('-----Start gradient test------')
 
 origin_search_list = [32] * 32
+origin_search_list2 = [32] * 32
 search_list = deepcopy(origin_search_list)
+search_list2 = deepcopy(origin_search_list2)
 
 for _ in range(prune_turn):
-    logger.info(f'Start searching for {search_list}')
+    model = None
+    gradients = None
+    activations = None
+    torch.cuda.empty_cache()
+    args = parser.parse_args(args=[])
+    logger.info(f'Start searching for lora:{search_list}')
     args.lora = search_list
     args.epochs = 1
     configs = PEFTSearchSpace(args).get_config()
@@ -89,46 +107,13 @@ for _ in range(prune_turn):
         model.model,
         task_name='my_module',
         opts=['lora'],
-        p_method='snip',
+        p_method='gradient',
         top_p=12,
         print_names=True,
         gradients=gradients,
         activations=activations)
     logger.info(f'Pruned layer: {idx, idt}')
-    search_list[int(idx)] = 0
-
-logger.info('Start comparing')
-wrapper(origin_search_list)
-wrapper([32] * 27)
-wrapper(search_list)
-
-logger.info('-----Start weight sum test------')
-
-origin_search_list = [32] * 32
-search_list = deepcopy(origin_search_list)
-
-for _ in range(prune_turn):
-    logger.info(f'Start searching for {search_list}')
-    args.lora = search_list
-    args.epochs = 1
-    configs = PEFTSearchSpace(args).get_config()
-    model = PEFTModel(configs, dataset).half()
-    res, gradients, activations = model.run()
-    logger.info(f'Result {res} for {search_list}')
-
-    idx, idt = prune_model(
-        model.model,
-        task_name='my_module',
-        opts=['lora'],
-        p_method='values_below_threshold',
-        top_p=12,
-        print_names=True,
-        gradients=gradients,
-        activations=activations)
-    logger.info(f'Pruned layer: {idx, idt}')
-    search_list[int(idx)] = 0
-
-logger.info('Start comparing')
-wrapper(origin_search_list)
-wrapper([32] * (32 - prune_turn))
-wrapper(search_list)
+    if idt == 'lora':
+        search_list[int(idx)] = 0
+    elif idt == 'adapter':
+        search_list2[int(idx)] = 0

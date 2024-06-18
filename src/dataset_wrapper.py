@@ -54,28 +54,18 @@ class PEFTDataset():
             new_val_size = min(int(test_size), original_val_size)
             new_test_size = min(int(test_size), original_test_size)
 
-        train_dataset, _ = random_split(
-            dataset['train'],
-            [new_train_size, original_train_size - new_train_size])
-        val_dataset, _ = random_split(
-            dataset['validation'],
-            [new_val_size, original_val_size - new_val_size])
-        test_dataset, _ = random_split(
-            dataset['test'],
-            [new_test_size, original_test_size - new_test_size])
+        train_datast, val_dataset, test_dataset = load_dataset(
+            dataset_name,
+            task_name,
+            split=[
+                f'train[:{new_train_size}]', f'validation[:{new_val_size}]',
+                f'test[:{new_test_size}]'
+            ])
 
         dataset = DatasetDict({
-            'train':
-                load_dataset(
-                    dataset_name, task_name, split=f'train[:{new_train_size}]'),
-            'validation':
-                load_dataset(
-                    dataset_name,
-                    task_name,
-                    split=f'validation[:{new_val_size}]'),
-            'test':
-                load_dataset(
-                    dataset_name, task_name, split=f'test[:{new_test_size}]')
+            'train': train_datast,
+            'validation': val_dataset,
+            'test': test_dataset
         })
 
         if instructs and not instruct_string:

@@ -67,7 +67,7 @@ class TrainerWithGrad:
         def save_activation(name):
 
             def hook(module, input, output):
-                activations[name] = output
+                activations[name] = output[0]
 
             return hook
 
@@ -79,10 +79,9 @@ class TrainerWithGrad:
                 # print(param_name, param)
                 if param.requires_grad:
                     hooks.append(
-                        module.register_forward_hook(save_activation(name)))
-                    print(f"register hook for {name}")
-                    print(activations)
-                    continue
+                        module.register_forward_hook(
+                            save_activation(name + "." + param_name)))
+                    break
 
         for epoch in range(self.epoch_num):
             self.model.train()
@@ -125,6 +124,8 @@ class TrainerWithGrad:
                 scheduler.step()
                 self.model.zero_grad()
 
+        for module, activation in activations.items():
+            print(f"Activation for {module}: {activation}")
         for hook in hooks:
             hook.remove()
 
