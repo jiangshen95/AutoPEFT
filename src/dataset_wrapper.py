@@ -3,43 +3,90 @@ split the dataset into train and test
 '''
 
 from datasets import load_dataset, DatasetDict
+from torch.utils.data import random_split
 
 
 class PEFTDataset():
     '''
     '''
     dataset = None
+    train_dataset = None
+    test_dataset = None
+    validation_dataset = None
 
     def __init__(self,
                  dataset_name,
+                 task_name=None,
                  instructs=False,
                  test_size=1.0,
                  train_size=1.0):
         '''
-        dataset_name: a string
+        dataset_name: a string,
+        task_name: a string, can be empty, only use in "glue/cola" etc.
         '''
-        # dataset_train = load_dataset(
-        #     'rotten_tomatoes', split=f"train[:{int(train_size*100)}%]")
-        # dataset_test = load_dataset(
-        #     'rotten_tomatoes', split=f"test[:{int(test_size*100)}%]")
-        # self.dataset = DatasetDict({
-        #     'train': dataset_train,
-        #     'test': dataset_test
-        # })
-        self.dataset = load_dataset(dataset_name)
-        self.dataset = self.dataset['test'].train_test_split(
-            test_size=test_size)
-        if instructs and dataset_name == "rotten_tomatoes":
-            instruct_string = "Below is some movie reviews that are labeled positive or negative. If it is positive, output 1, else 0. Do not output anything else. Here is the review: \n"
+        if (task_name):
+            dataset = load_dataset(dataset_name, task_name)
         else:
-            instruct_string = ""
+            dataset = load_dataset(dataset_name)
 
-        def add_prefix(example):
-            example["text"] = instruct_string + example["text"]
-            return example
+        instruct_string = ""
+        if (dataset_name == "glue"):
+            if (task_name == "cola"):
+                pass
 
-        self.dataset = self.dataset.map(add_prefix)
-        # print(self.dataset['train']['text'][:10])
+        # split the dataset, dataset should have "train", "test", "validation"
+        # if train_size/test_size<1.0, then the dataset will be split by rate
+        # if train_size/test_size>1.0, then the dataset will be split by number
+
+        original_train_size = len(dataset['train'])
+        original_val_size = len(dataset['validation'])
+        original_test_size = len(dataset['test'])
+
+        if train_size <= 1.0:
+            new_train_size = int(original_train_size * train_size)
+        elif train_size > 1.0:
+            new_train_size = min(int(train_size), original_train_size)
+
+        if test_size <= 1.0:
+            new_val_size = int(original_val_size * test_size)
+            new_test_size = int(original_test_size * test_size)
+        elif test_size > 1.0:
+            new_val_size = min(int(test_size), original_val_size)
+            new_test_size = min(int(test_size), original_test_size)
+
+        train_dataset, _ = random_split(
+            dataset['train'],
+            [new_train_size, original_train_size - new_train_size])
+        val_dataset, _ = random_split(
+            dataset['validation'],
+            [new_val_size, original_val_size - new_val_size])
+        test_dataset, _ = random_split(
+            dataset['test'],
+            [new_test_size, original_test_size - new_test_size])
+
+        dataset = DatasetDict({
+            'train':
+                load_dataset(
+                    dataset_name, task_name, split=f'train[:{new_train_size}]'),
+            'validation':
+                load_dataset(
+                    dataset_name,
+                    task_name,
+                    split=f'validation[:{new_val_size}]'),
+            'test':
+                load_dataset(
+                    dataset_name, task_name, split=f'test[:{new_test_size}]')
+        })
+
+        if instructs and not instruct_string:
+
+            def add_prefix(example):
+                example["text"] = instruct_string + example["text"]
+                return example
+
+            dataset = dataset.map(add_prefix)
+
+        self.dataset = dataset
 
     def get_dataset(self):
         return self.dataset

@@ -31,7 +31,8 @@ class TrainerWithGrad:
                  compute_metrics, callbacks, tokenizer):
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
-        self.model = model.to(self.device)
+        self.model = torch.nn.DataParallel(
+            model.to(self.device), device_ids=[0, 1, 2, 3])
         self.args = args
         self.train_dataset = train_dataset
         self.eval_dataset = eval_dataset
@@ -59,6 +60,30 @@ class TrainerWithGrad:
             optimizer,
             num_warmup_steps=0,
             num_training_steps=len(self.train_dataloader) * 3)
+
+        activations = {}
+
+        # 定义钩子函数
+        def save_activation(name):
+
+            def hook(module, input, output):
+                activations[name] = output
+
+            return hook
+
+        # 为每个层注册钩子
+        hooks = []
+        for name, module in self.model.named_modules():
+            # print(name, module)
+            for param_name, param in module.named_parameters(recurse=False):
+                # print(param_name, param)
+                if param.requires_grad:
+                    hooks.append(
+                        module.register_forward_hook(save_activation(name)))
+                    print(f"register hook for {name}")
+                    print(activations)
+                    continue
+
         for epoch in range(self.epoch_num):
             self.model.train()
             gradients = {}
@@ -87,19 +112,23 @@ class TrainerWithGrad:
                 loss_fn = CrossEntropyLoss()
                 loss = loss_fn(outputs.logits, batch['label'])
                 loss.backward()
-
+                # activations[name] = activations.setdefault(
+                #             name, 0) + output.cpu().numpy()
                 # 保存梯度信息
                 for name, param in self.model.named_parameters():
                     if param.grad is not None:
-                        gradients[name] = param.grad.detach().cpu().numpy()
+                        gradients[name] = gradients.setdefault(
+                            name, 0) + param.grad.detach().cpu().numpy()
 
                 # print(gradients)
-
                 optimizer.step()
                 scheduler.step()
                 self.model.zero_grad()
 
-        return gradients
+        for hook in hooks:
+            hook.remove()
+
+        return gradients, activations
 
     def evaluate(self):
         self.model.eval()

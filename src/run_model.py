@@ -30,6 +30,21 @@ from src.dataset_wrapper import PEFTDataset
 from src.peft_search_space import PEFTSearchSpace
 from sklearn.metrics import f1_score
 from trainer_with_grad import TrainerWithGrad
+import random
+
+# 设置Python的随机种子
+random.seed(42)
+
+# 设置NumPy的随机种子
+np.random.seed(42)
+
+# 设置PyTorch的随机种子
+torch.manual_seed(42)
+if torch.cuda.is_available():
+    torch.cuda.manual_seed(42)
+    torch.cuda.manual_seed_all(42)  # 为所有GPU设置种子
+torch.backends.cudnn.deterministic = True
+torch.backends.cudnn.benchmark = False
 
 
 def print_trainable_parameters(model):
@@ -88,7 +103,8 @@ class PEFTModel:
         self.gradients = {}
 
         # calculate the number of labels
-        num_labels = dataset["test"].features["label"].num_classes
+        num_labels = dataset["train"].features["label"].num_classes
+        print("number of label classes:", num_labels)
         self.model.add_classification_head(
             self.task_name, num_labels=num_labels)
 
@@ -231,7 +247,7 @@ class PEFTModel:
             model=self.model,
             args=training_args,
             train_dataset=self.dataset['train'],
-            eval_dataset=self.dataset['test'],
+            eval_dataset=self.dataset['validation'],
             compute_metrics=compute_metrics,
             callbacks=[GradientCaptureCallback(self)],
             tokenizer=self.tokenizer,
@@ -240,14 +256,15 @@ class PEFTModel:
         # Register hooks to capture gradients
         for name, param in self.model.named_parameters():
             if param.requires_grad:
-                param.register_hook(lambda grad, name=name: self.gradients.
-                                    update({name: grad.clone().cpu().numpy()}))
+                param.register_hook(
+                    lambda grad, name=name: self.gradients.update(
+                        {name: grad.clone().cpu().detach().numpy()}))
 
-        gradients = self.trainer.train()
+        gradients, activations = self.trainer.train()
         metrics = self.trainer.evaluate()
         print(metrics)
 
-        return metrics, gradients
+        return metrics, gradients, activations
 
     def add_dataset(self, dataset):
         """add a dataset"""

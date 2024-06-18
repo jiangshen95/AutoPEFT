@@ -27,7 +27,7 @@ def group_parameters_by_prefix(names, opts=[], print_names=False, task_name=''):
     ]
     for name in names:
         prefix = name.split(task_name)[0]
-        prefix = prefix.replace('query.', '').replace('value.', '')
+        prefix = prefix.replace('q_proj.', '').replace('v_proj.', '')
         if prefix in groups:
             groups[prefix].append(name)
         else:
@@ -44,7 +44,8 @@ def find_group_with_most_small_values(groups,
                                       model,
                                       p_method,
                                       top_p=1,
-                                      gradients=None):
+                                      gradients=None,
+                                      hessians=None):
     """Find groups with the smallest values or smallest summed gradients"""
     group_values = []
 
@@ -78,10 +79,69 @@ def find_group_with_most_small_values(groups,
                 np.abs(gradients[name]).sum().item() for name in names)
             group_values.append((group, names, total_gradient))
 
+    elif p_method == 'snip':
+        if gradients is None:
+            raise ValueError("Gradients must be provided for 'snip' p_method")
+
+        # Calculate the gradient magnitudes
+        gradient_magnitudes = {}
+        for name in gradients:
+            gradient_magnitudes[name] = np.abs(gradients[name])
+
+        # Normalize the gradients
+        norm_gradients = {}
+        for name, grad in gradient_magnitudes.items():
+            weight = model.state_dict()[name].cpu().numpy(
+            )  # Convert weight to numpy array
+            norm_gradients[name] = grad * weight
+
+        # Sum normalized gradients for each group
+        for group, names in groups.items():
+            total_snip = sum(
+                norm_gradients[name].sum().item() for name in names)
+            group_values.append((group, names, total_snip))
+
+    elif p_method == 'grasp':
+        if gradients is None or hessians is None:
+            raise ValueError(
+                "Gradients and Hessians must be provided for 'grasp' p_method")
+
+        # Calculate the Hessian-gradient products
+        hessian_grad_products = {}
+        for name in gradients:
+            hessian_grad_products[name] = gradients[name] * hessians[name]
+
+        # Normalize the Hessian-gradient products
+        norm_hessian_grad_products = {}
+        for name, hg_product in hessian_grad_products.items():
+            weight = model.state_dict()[name].cpu().numpy(
+            )  # Convert weight to numpy array
+            norm_hessian_grad_products[name] = hg_product * weight
+
+        # Sum normalized Hessian-gradient products for each group
+        for group, names in groups.items():
+            total_grasp = sum(
+                norm_hessian_grad_products[name].sum().item() for name in names)
+            group_values.append((group, names, total_grasp))
+
+    elif p_method == 'activation':
+        if activations is None:
+            raise ValueError(
+                "Activations must be provided for 'activation' p_method")
+        for group, names in groups.items():
+            activation_scores = []
+            for name in names:
+                activation = activations[name]
+                # 计算激活值的重要性评分，可以使用不同的统计量，这里用平均值
+                activation_score = activation.mean().item()
+                activation_scores.append(activation_score)
+            total_activation_score = sum(activation_scores)
+            group_values.append((group, names, total_activation_score))
+
     sorted_groups = sorted(
         group_values,
         key=lambda x: x[2],
-        reverse=(p_method != 'minimum_weight'))[:top_p]
+        reverse=(p_method not in ['minimum_weight']))[:top_p]
 
     return sorted_groups
 
@@ -120,7 +180,9 @@ def prune_model(model,
                 p_method='zeros',
                 top_p=3,
                 print_names=False,
-                gradients=None):
+                gradients=None,
+                hessians=None,
+                activations=None):
     """Prune the model's parameters"""
     names = get_trainable_parameters(model)
     groups = group_parameters_by_prefix(

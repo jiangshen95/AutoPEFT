@@ -2,11 +2,12 @@ from src.run_model import PEFTModel
 from src.peft_search_space import PEFTSearchSpace
 from src.dataset_wrapper import PEFTDataset
 from pruning_methods import prune_model
+from utils.gpu_memory_plot import get_free_gpu_memory
 
 import argparse
 import logging
-import random
 import time
+from copy import deepcopy
 
 logger = logging.getLogger('controller')
 logger.setLevel(logging.INFO)  # 设置日志级别
@@ -20,8 +21,7 @@ logger.addHandler(file_handler)
 
 logger.info('Start loading dataset')
 dataset = PEFTDataset(
-    'rotten_tomatoes', instructs=True, test_size=0.2,
-    train_size=0.3).get_dataset()
+    'glue', 'cola', test_size=0.2, train_size=0.3).get_dataset()
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--lora', type=int, nargs='+')
@@ -36,8 +36,6 @@ searched_res = []
 # baseline
 logger.info('Start baseline')
 
-print(dataset["train"]['text'][0])
-
 
 def save_gradients(model):
     gradients = {}
@@ -48,16 +46,15 @@ def save_gradients(model):
 
 
 def wrapper(search_list):
+    global model, res, configs, gradients
     args.lora = search_list
-    args.epochs = 5
+    args.epochs = 1
     args.instructs = 1
     # args.adapter = search_list
     configs = PEFTSearchSpace(args).get_config()
-    model = PEFTModel(configs, dataset)
-    res = model.run()
-    grad = save_gradients(model)
+    model = PEFTModel(configs, dataset).half()
+    res, gradients = model.run()
     logger.info(f'Result for {search_list}: {res}')
-    logger.info(f'grad: {grad}')
 
 
 def wrapper2(search_list, search_list2):
@@ -73,24 +70,65 @@ def wrapper2(search_list, search_list2):
     logger.info(f'Result for {search_list, search_list2}: {res}')
 
 
-search_list = [32] * 32
+prune_turn = 3
+logger.info('-----Start gradient test------')
 
-for _ in range(10):
+origin_search_list = [32] * 32
+search_list = deepcopy(origin_search_list)
+
+for _ in range(prune_turn):
     logger.info(f'Start searching for {search_list}')
     args.lora = search_list
     args.epochs = 1
     configs = PEFTSearchSpace(args).get_config()
     model = PEFTModel(configs, dataset).half()
-    res, gradients = model.run()
-    logger.info(f'Result for {search_list}: {res}')
+    res, gradients, activations = model.run()
+    logger.info(f'Result {res} for {search_list}')
 
     idx, idt = prune_model(
         model.model,
         task_name='my_module',
-        opts=['lora', 'adapter'],
-        p_method='gradient',
+        opts=['lora'],
+        p_method='snip',
         top_p=12,
         print_names=True,
-        gradients=gradients)
+        gradients=gradients,
+        activations=activations)
     logger.info(f'Pruned layer: {idx, idt}')
     search_list[int(idx)] = 0
+
+logger.info('Start comparing')
+wrapper(origin_search_list)
+wrapper([32] * 27)
+wrapper(search_list)
+
+logger.info('-----Start weight sum test------')
+
+origin_search_list = [32] * 32
+search_list = deepcopy(origin_search_list)
+
+for _ in range(prune_turn):
+    logger.info(f'Start searching for {search_list}')
+    args.lora = search_list
+    args.epochs = 1
+    configs = PEFTSearchSpace(args).get_config()
+    model = PEFTModel(configs, dataset).half()
+    res, gradients, activations = model.run()
+    logger.info(f'Result {res} for {search_list}')
+
+    idx, idt = prune_model(
+        model.model,
+        task_name='my_module',
+        opts=['lora'],
+        p_method='values_below_threshold',
+        top_p=12,
+        print_names=True,
+        gradients=gradients,
+        activations=activations)
+    logger.info(f'Pruned layer: {idx, idt}')
+    search_list[int(idx)] = 0
+
+logger.info('Start comparing')
+wrapper(origin_search_list)
+wrapper([32] * (32 - prune_turn))
+wrapper(search_list)
