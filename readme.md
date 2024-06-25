@@ -14,13 +14,9 @@ Hello AutoPEFT!
 - 构建评估 Benchmark
 - prefix-tuning
 - verbose
-- baseline：普通PEFT，比如LORA
-- 没做剪枝的baseline
 - 使用AUC
-- 物理结构剪枝
 - debug训练
-- not all experts are equal
-- llm pruner
+- 表格
 
 ## 评估
 

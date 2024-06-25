@@ -10,6 +10,7 @@ from src.dataset_wrapper import PEFTDataset
 import torch
 from pruning_methods import prune_model
 from utils.gpu_memory_plot import get_free_gpu_memory
+from src.controllers.baseline_wrapper import baseline_wrapper_single, prune_wrapper_single
 
 import argparse
 import logging
@@ -43,98 +44,22 @@ searched_args = []
 searched_res = []
 
 # baseline
-logger.info('Start baseline')
+logger.info('Start prune lora')
 
-
-def wrapper(search_list, ds_name):
-    global model, res, configs, gradients, dataset
-    args = parser.parse_args(args=[])
-    args.epochs = 3
-    args.instructs = 0
-    # args.lora = search_list
-    args.adapter = search_list
-    configs = PEFTSearchSpace(args).get_config()
-    if ds_name == 'stsb':
-        configs['loss'] = 'mse'
-    model = PEFTModel(configs, dataset).half()
-    res, gradients, activations = model.run()
-    peft_type = ''
-    if 'adapter' in configs and 'lora' in configs:
-        peft_type = 'lora&adapter'
-    elif 'adapter' in configs:
-        peft_type = 'adapter'
-    elif 'lora' in configs:
-        peft_type = 'lora'
-    logger.info(f'Result {res} for {peft_type} {search_list}')
-
-
+args.lora = [32] * 32
+args.epoch = 3
+configs = PEFTSearchSpace(args).get_config()
 to_load = ['qnli', 'rte', 'wnli', 'cola', 'sst2', 'mrpc', 'qqp']
 for ds_name in to_load:
     logger.info(f"start testing {ds_name}")
     dataset = PEFTDataset(
         'glue', ds_name, train_size=1200, test_size=400).get_dataset()
-    wrapper([128] * 32, ds_name)
+    baseline_wrapper_single(
+        search_list=args.lora,
+        ds_name=ds_name,
+        dataset=dataset,
+        logger=logger,
+        configs=configs)
     dataset = None
     model = None
     torch.cuda.empty_cache()
-
-# prune_turn = 0
-# logger.info('-----Start gradient test------')
-
-# origin_search_list = [32] * 32
-# search_list = deepcopy(origin_search_list)
-
-# for _ in range(prune_turn):
-#     logger.info(f'Start searching for {search_list}')
-#     args.lora = search_list
-#     args.epochs = 1
-#     configs = PEFTSearchSpace(args).get_config()
-#     model = PEFTModel(configs, dataset).half()
-#     res, gradients = model.run()
-#     logger.info(f'Result {res} for {search_list}')
-
-#     idx, idt = prune_model(
-#         model.model,
-#         task_name='my_module',
-#         opts=['lora'],
-#         p_method='snip',
-#         top_p=12,
-#         print_names=True,
-#         gradients=gradients)
-#     logger.info(f'Pruned layer: {idx, idt}')
-#     search_list[int(idx)] = 0
-
-# logger.info('Start comparing')
-# wrapper(origin_search_list)
-# wrapper([32] * 27)
-# wrapper(search_list)
-
-# logger.info('-----Start weight sum test------')
-
-# origin_search_list = [32] * 32
-# search_list = deepcopy(origin_search_list)
-
-# for _ in range(prune_turn):
-#     logger.info(f'Start searching for {search_list}')
-#     args.lora = search_list
-#     args.epochs = 1
-#     configs = PEFTSearchSpace(args).get_config()
-#     model = PEFTModel(configs, dataset).half()
-#     res, gradients = model.run()
-#     logger.info(f'Result {res} for {search_list}')
-
-#     idx, idt = prune_model(
-#         model.model,
-#         task_name='my_module',
-#         opts=['lora'],
-#         p_method='values_below_threshold',
-#         top_p=12,
-#         print_names=True,
-#         gradients=gradients)
-#     logger.info(f'Pruned layer: {idx, idt}')
-#     search_list[int(idx)] = 0
-
-# logger.info('Start comparing')
-# wrapper(origin_search_list)
-# wrapper([32] * (32 - prune_turn))
-# wrapper(search_list)
