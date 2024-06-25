@@ -19,6 +19,8 @@ Hello AutoPEFT!
 - 使用AUC
 - 物理结构剪枝
 - debug训练
+- not all experts are equal
+- llm pruner
 
 ## 评估
 
@@ -33,3 +35,11 @@ LLM 微调性能评估 Benchmark 构建，包含 NLG (Neural language generation
 - Commonsense Reasoning Benchmark https://commonsense.run/datasets/ 常识推理
 - Squad2.0 https://rajpurkar.github.io/SQuAD-explorer/explore/v2.0/dev/ 问答
 - MBPP, HumanEval 代码生成
+
+## 实验设计
+
+- lora baseline：rank=64, epoch=3, GLUE
+- adapter baseline：bn=128, epoch=3, GLUE
+- 对lora和adapter分别完全剪枝，找到在各个数据集上比较适合的剪枝数量
+- 对lora和adapter用各方法剪枝，剪枝数量为手动设定，在GLUE数据集上
+- lora和adapter同时加入模型，同时剪枝，使用激活值方法

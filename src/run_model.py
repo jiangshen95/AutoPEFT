@@ -185,6 +185,18 @@ class PEFTModel:
         if configs.get("instructs"):
             self.instructs = 1
 
+        if configs.get("loss"):
+            self.loss_type = configs["loss"]
+            if (self.loss_type == "cross_entropy"):
+                self.loss_fn = nn.CrossEntropyLoss()
+            elif (self.loss_type == "mse"):
+                self.loss_fn = nn.MSELoss()
+            else:
+                raise (f"loss type {self.loss_type} not supported")
+        else:
+            self.loss_type = "cross_entropy"
+            self.loss_fn = nn.CrossEntropyLoss()
+
     def run(self):
         """tokenize the dataset and train the model"""
         assert self.dataset is not None
@@ -254,6 +266,7 @@ class PEFTModel:
             compute_metrics=compute_metrics,
             callbacks=[GradientCaptureCallback(self)],
             tokenizer=self.tokenizer,
+            loss_fn=self.loss_fn,
         )
 
         # Register hooks to capture gradients
@@ -317,7 +330,9 @@ class PEFTModel:
             # nn.init.kaiming_uniform_(
             #     weights, a=math.sqrt(5)
             # )  # TODO: use rand will unable to train, use kaiming init is weaker than default(0.74 vs 0.77 on rotten_tomatoes 4 epoch)
-            weights = torch.randn(target_rank_size, origin_emb_size)
+            weights = torch.zeros(target_rank_size, origin_emb_size)
+            torch.nn.init.normal(
+                weights, mean=0, std=1 / pow(origin_emb_size, 0.5))
             exec("self.model." + name +
                  "=nn.Parameter(data=weights, requires_grad=True)")
 
@@ -325,39 +340,42 @@ class PEFTModel:
             weights = torch.zeros(origin_emb_size, target_rank_size)
             exec("self.model." + name +
                  "=nn.Parameter(data=weights, requires_grad=True)")
+        # Maybe we do not need initial when reinitialed the whole model
+        # for name in [
+        #         name for name in group
+        #         if "adapter_down" in name and "weight" in name
+        # ]:
+        #     weights = torch.zeros(target_rank_size, origin_emb_size)
+        #     torch.nn.init.normal(
+        #         weights, mean=0, std=1 / pow(origin_emb_size, 0.5))
+        #     exec("self.model." + name +
+        #          "=nn.Parameter(data=weights, requires_grad=True)")
 
-        for name in [
-                name for name in group
-                if "adapter_down" in name and "weight" in name
-        ]:
-            weights = torch.randn(target_rank_size,
-                                  origin_emb_size)  # TODO: how to init?
-            exec("self.model." + name +
-                 "=nn.Parameter(data=weights, requires_grad=True)")
+        # for name in [
+        #         name for name in group
+        #         if "adapter_down" in name and "bias" in name
+        # ]:
+        #     weights = torch.zeros(target_rank_size)
+        #     exec("self.model." + name +
+        #          "=nn.Parameter(data=weights, requires_grad=True)")
 
-        for name in [
-                name for name in group
-                if "adapter_down" in name and "bias" in name
-        ]:
-            weights = torch.zeros(target_rank_size)
-            exec("self.model." + name +
-                 "=nn.Parameter(data=weights, requires_grad=True)")
+        # for name in [
+        #         name for name in group
+        #         if "adapter_up" in name and "weight" in name
+        # ]:
+        #     weights = torch.zeros(origin_emb_size, target_rank_size)
+        #     torch.nn.init.normal(
+        #         weights, mean=0, std=1 / pow(origin_emb_size, 0.5))
+        #     exec("self.model." + name +
+        #          "=nn.Parameter(data=weights, requires_grad=True)")
 
-        for name in [
-                name for name in group
-                if "adapter_up" in name and "weight" in name
-        ]:
-            weights = torch.randn(origin_emb_size, target_rank_size)
-            exec("self.model." + name +
-                 "=nn.Parameter(data=weights, requires_grad=True)")
-
-        for name in [
-                name for name in group
-                if "adapter_up" in name and "bias" in name
-        ]:
-            weights = torch.zeros(origin_emb_size)
-            exec("self.model." + name +
-                 "=nn.Parameter(data=weights, requires_grad=True)")
+        # for name in [
+        #         name for name in group
+        #         if "adapter_up" in name and "bias" in name
+        # ]:
+        #     weights = torch.zeros(origin_emb_size)
+        #     exec("self.model." + name +
+        #          "=nn.Parameter(data=weights, requires_grad=True)")
 
     def half(self):
         self.model = self.model.half()

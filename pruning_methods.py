@@ -94,7 +94,7 @@ def find_group_with_most_small_values(groups,
             weight = model.state_dict()[name].cpu().numpy(
             )  # Convert weight to numpy array
             norm_gradients[name] = grad * weight
-            
+
         # Sum normalized gradients for each group
         for group, names in groups.items():
             total_snip = sum(
@@ -189,8 +189,9 @@ def prune_model(model,
     groups = group_parameters_by_prefix(
         names, opts=opts, print_names=print_names, task_name=task_name)
     sorted_groups = find_group_with_most_small_values(groups, model, p_method,
-                                                      top_p, gradients, activations)
-    remove_layers(sorted_groups, model)
+                                                      top_p, gradients,
+                                                      activations)
+    # remove_layers(sorted_groups, model)
     if print_names:
         for group_info in sorted_groups:
             group, _, small_values = group_info

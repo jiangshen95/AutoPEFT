@@ -27,8 +27,15 @@ from pruning_methods import *
 
 class TrainerWithGrad:
 
-    def __init__(self, model, args, train_dataset, eval_dataset,
-                 compute_metrics, callbacks, tokenizer):
+    def __init__(self,
+                 model,
+                 args,
+                 train_dataset,
+                 eval_dataset,
+                 compute_metrics,
+                 callbacks,
+                 tokenizer,
+                 loss_fn=CrossEntropyLoss()):
         self.device = torch.device(
             "cuda" if torch.cuda.is_available() else "cpu")
         self.model = torch.nn.DataParallel(
@@ -51,6 +58,8 @@ class TrainerWithGrad:
         self.eval_dataloader = DataLoader(
             eval_dataset, batch_size=self.eval_batch_size, shuffle=False)
 
+        self.loss_fn = loss_fn
+
         print(train_dataset, eval_dataset)
         print('finished init')
 
@@ -68,6 +77,8 @@ class TrainerWithGrad:
 
             def hook(module, input, output):
                 activations[name] = output[0]
+                # with open('record_activation.log', 'a') as file:
+                #     file.write(f"Activation for {name}: {output[0]}\n") # check grad explode
 
             return hook
 
@@ -82,7 +93,9 @@ class TrainerWithGrad:
                         module.register_forward_hook(
                             save_activation(name + "." + param_name)))
                     break
-
+        # for name, param in self.model.named_parameters():
+        #     if param.requires_grad:
+        #         print(name, param)
         for epoch in range(self.epoch_num):
             self.model.train()
             gradients = {}
@@ -108,9 +121,9 @@ class TrainerWithGrad:
                 }
                 batch['label'] = batch['label'].to(self.device)
                 outputs = self.model(**inputs)
-                loss_fn = CrossEntropyLoss()
-                loss = loss_fn(outputs.logits, batch['label'])
+                loss = self.loss_fn(outputs.logits, batch['label'])
                 loss.backward()
+                # print(f"batch loss: {loss}, batch output: {outputs}")
                 # activations[name] = activations.setdefault(
                 #             name, 0) + output.cpu().numpy()
                 # 保存梯度信息
@@ -125,7 +138,7 @@ class TrainerWithGrad:
                 self.model.zero_grad()
 
         for module, activation in activations.items():
-            print(f"Activation for {module}: {activation}")
+            print(f"Activation for {module}: {activation[0]}")
         for hook in hooks:
             hook.remove()
 

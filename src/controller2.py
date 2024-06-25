@@ -46,24 +46,34 @@ searched_res = []
 logger.info('Start baseline')
 
 
-def wrapper(search_list):
+def wrapper(search_list, ds_name):
     global model, res, configs, gradients, dataset
-    args.lora = search_list
-    args.epochs = 1
+    args = parser.parse_args(args=[])
+    args.epochs = 3
     args.instructs = 0
-    # args.adapter = search_list
+    # args.lora = search_list
+    args.adapter = search_list
     configs = PEFTSearchSpace(args).get_config()
+    if ds_name == 'stsb':
+        configs['loss'] = 'mse'
     model = PEFTModel(configs, dataset).half()
     res, gradients, activations = model.run()
-    logger.info(f'Result {res} for {search_list}')
+    peft_type = ''
+    if 'adapter' in configs and 'lora' in configs:
+        peft_type = 'lora&adapter'
+    elif 'adapter' in configs:
+        peft_type = 'adapter'
+    elif 'lora' in configs:
+        peft_type = 'lora'
+    logger.info(f'Result {res} for {peft_type} {search_list}')
 
 
-to_load = ['cola', 'sst2', 'mrpc', 'qqp', 'stsb', 'qnli', 'rte', 'wnli']
+to_load = ['qnli', 'rte', 'wnli', 'cola', 'sst2', 'mrpc', 'qqp']
 for ds_name in to_load:
     logger.info(f"start testing {ds_name}")
     dataset = PEFTDataset(
-        'glue', ds_name, train_size=600, test_size=200).get_dataset()
-    wrapper([32] * 32)
+        'glue', ds_name, train_size=1200, test_size=400).get_dataset()
+    wrapper([128] * 32, ds_name)
     dataset = None
     model = None
     torch.cuda.empty_cache()
