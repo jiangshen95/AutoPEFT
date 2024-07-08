@@ -17,6 +17,7 @@ import logging
 import time
 from copy import deepcopy
 import os
+import json
 
 logger = logging.getLogger('controller')
 logger.setLevel(logging.INFO)  # 设置日志级别
@@ -38,28 +39,61 @@ parser.add_argument('--lora', type=int, nargs='+')
 parser.add_argument('--adapter', type=int, nargs='+')
 parser.add_argument('--base_lora', type=int)
 parser.add_argument('--base_adapter', type=int)
-args = parser.parse_args()
+parser.add_argument('--epochs', type=int)
 
 searched_args = []
 searched_res = []
 
-# baseline
-logger.info('Start prune lora')
+logger.info('Start prune adapter')
 
-args.lora = [32] * 32
-args.epoch = 3
-configs = PEFTSearchSpace(args).get_config()
 to_load = ['qnli', 'rte', 'wnli', 'cola', 'sst2', 'mrpc', 'qqp']
+prune_methods = [
+    'zeros',
+    'values_below_threshold',
+    'snip',
+    'minimum_weight',
+    'activation',
+    'gradient',
+]
 for ds_name in to_load:
-    logger.info(f"start testing {ds_name}")
     dataset = PEFTDataset(
-        'glue', ds_name, train_size=1200, test_size=400).get_dataset()
-    baseline_wrapper_single(
-        search_list=args.lora,
+        'glue', ds_name, train_size=2000, test_size=400).get_dataset()
+    args = parser.parse_args(args=[])
+    args.adapter = [128] * 24
+    args.epochs = 3
+    res_base = baseline_wrapper_single(
+        search_list=[128] * 24,
         ds_name=ds_name,
         dataset=dataset,
         logger=logger,
-        configs=configs)
-    dataset = None
-    model = None
-    torch.cuda.empty_cache()
+        args=args,
+    )
+    res_methods = {}
+    res_methods['base'] = res_base
+    for prune_method in prune_methods:
+        args = parser.parse_args(args=[])
+        args.adapter = [128] * 24
+        args.epochs = 1
+        logger.info(f"Start testing {ds_name} with {prune_method}")
+        res_search_list = prune_wrapper_single(
+            search_list=args.adapter,
+            ds_name=ds_name,
+            dataset=dataset,
+            logger=logger,
+            args=args,
+            prune_method=prune_method,
+            prune_turn=6)
+        args = parser.parse_args(args=[])
+        args.adapter = res_search_list
+        args.epochs = 3
+        res = baseline_wrapper_single(
+            search_list=res_search_list,
+            ds_name=ds_name,
+            dataset=dataset,
+            logger=logger,
+            args=args,
+        )
+        res_methods[prune_method] = res
+    with open('results/final-adapter.json', 'a') as file:
+        file.write(ds_name + '\n')
+        file.write(json.dumps(res_methods) + '\n')

@@ -82,6 +82,8 @@ class TrainerWithGrad:
 
             return hook
 
+        # for name, param in self.model.named_parameters():
+        #     print(name)
         # 为每个层注册钩子
         hooks = []
         for name, module in self.model.named_modules():
@@ -128,6 +130,7 @@ class TrainerWithGrad:
                 #             name, 0) + output.cpu().numpy()
                 # 保存梯度信息
                 for name, param in self.model.named_parameters():
+                    # print(name)
                     if param.grad is not None:
                         gradients[name] = gradients.setdefault(
                             name, 0) + param.grad.detach().cpu().numpy()
@@ -137,8 +140,8 @@ class TrainerWithGrad:
                 scheduler.step()
                 self.model.zero_grad()
 
-        for module, activation in activations.items():
-            print(f"Activation for {module}: {activation[0]}")
+        # for module, activation in activations.items():
+        #     print(f"Activation for {module}: {activation[0]}")
         for hook in hooks:
             hook.remove()
 

@@ -90,7 +90,9 @@ class PEFTModel:
             dataset: a dataset object
         """
         self.trainer = None
-        self.model_name = "meta-llama/Meta-Llama-3-8B"
+        # self.model_name = "meta-llama/Meta-Llama-3-8B"
+        # self.model_name = "roberta-base"
+        self.model_name="roberta-large"
         self.task_name = "mytask"
 
         self.configs = configs
@@ -325,6 +327,7 @@ class PEFTModel:
             assert 0
             # TODO: remove the module
 
+        # Maybe we do not need initial when reinitialed the whole model
         for name in [name for name in group if "lora_A" in name]:
             # weights = torch.zeros(target_rank_size, origin_emb_size)
             # nn.init.kaiming_uniform_(
@@ -340,42 +343,41 @@ class PEFTModel:
             weights = torch.zeros(origin_emb_size, target_rank_size)
             exec("self.model." + name +
                  "=nn.Parameter(data=weights, requires_grad=True)")
-        # Maybe we do not need initial when reinitialed the whole model
-        # for name in [
-        #         name for name in group
-        #         if "adapter_down" in name and "weight" in name
-        # ]:
-        #     weights = torch.zeros(target_rank_size, origin_emb_size)
-        #     torch.nn.init.normal(
-        #         weights, mean=0, std=1 / pow(origin_emb_size, 0.5))
-        #     exec("self.model." + name +
-        #          "=nn.Parameter(data=weights, requires_grad=True)")
+        for name in [
+                name for name in group
+                if "adapter_down" in name and "weight" in name
+        ]:
+            weights = torch.zeros(target_rank_size, origin_emb_size)
+            torch.nn.init.normal(
+                weights, mean=0, std=1 / pow(origin_emb_size, 0.5))
+            exec("self.model." + name +
+                 "=nn.Parameter(data=weights, requires_grad=True)")
 
-        # for name in [
-        #         name for name in group
-        #         if "adapter_down" in name and "bias" in name
-        # ]:
-        #     weights = torch.zeros(target_rank_size)
-        #     exec("self.model." + name +
-        #          "=nn.Parameter(data=weights, requires_grad=True)")
+        for name in [
+                name for name in group
+                if "adapter_down" in name and "bias" in name
+        ]:
+            weights = torch.zeros(target_rank_size)
+            exec("self.model." + name +
+                 "=nn.Parameter(data=weights, requires_grad=True)")
 
-        # for name in [
-        #         name for name in group
-        #         if "adapter_up" in name and "weight" in name
-        # ]:
-        #     weights = torch.zeros(origin_emb_size, target_rank_size)
-        #     torch.nn.init.normal(
-        #         weights, mean=0, std=1 / pow(origin_emb_size, 0.5))
-        #     exec("self.model." + name +
-        #          "=nn.Parameter(data=weights, requires_grad=True)")
+        for name in [
+                name for name in group
+                if "adapter_up" in name and "weight" in name
+        ]:
+            weights = torch.zeros(origin_emb_size, target_rank_size)
+            torch.nn.init.normal(
+                weights, mean=0, std=1 / pow(origin_emb_size, 0.5))
+            exec("self.model." + name +
+                 "=nn.Parameter(data=weights, requires_grad=True)")
 
-        # for name in [
-        #         name for name in group
-        #         if "adapter_up" in name and "bias" in name
-        # ]:
-        #     weights = torch.zeros(origin_emb_size)
-        #     exec("self.model." + name +
-        #          "=nn.Parameter(data=weights, requires_grad=True)")
+        for name in [
+                name for name in group
+                if "adapter_up" in name and "bias" in name
+        ]:
+            weights = torch.zeros(origin_emb_size)
+            exec("self.model." + name +
+                 "=nn.Parameter(data=weights, requires_grad=True)")
 
     def half(self):
         self.model = self.model.half()

@@ -16,9 +16,11 @@ from copy import deepcopy
 import os
 
 
-def baseline_wrapper_single(search_list, ds_name, dataset, logger, configs):
+def baseline_wrapper_single(search_list, ds_name, dataset, logger, args):
+    configs = PEFTSearchSpace(args).get_config()
     if ds_name == 'stsb':
         configs['loss'] = 'mse'
+    torch.cuda.empty_cache()
     model = PEFTModel(configs, dataset).half()
     res, _, _ = model.run()
     peft_type = ''
@@ -28,22 +30,20 @@ def baseline_wrapper_single(search_list, ds_name, dataset, logger, configs):
         peft_type = 'adapter'
     elif 'lora' in configs:
         peft_type = 'lora'
-    logger.info(f'Result {res} for {peft_type} {search_list}, {configs}')
+    logger.info(f'Final-Result {res} for {search_list};{configs}')
+    model = None
+    torch.cuda.empty_cache()
+    return res
 
 
 def prune_wrapper_single(search_list,
                          ds_name,
                          dataset,
                          logger,
-                         configs,
+                         args,
                          prune_method='gradient',
                          prune_turn=10):
-    if 'adapter' in configs and 'lora' in configs:
-        peft_type = 'lora&adapter'
-    elif 'adapter' in configs:
-        peft_type = 'adapter'
-    elif 'lora' in configs:
-        peft_type = 'lora'
+    configs = PEFTSearchSpace(args).get_config()
 
     if ds_name == 'stsb':
         configs['loss'] = 'mse'
@@ -55,7 +55,6 @@ def prune_wrapper_single(search_list,
     elif 'lora' in configs:
         peft_type = 'lora'
 
-    prune_turn = 10
     logger.info(f'\tStart prune by {prune_method} for {prune_turn} times')
 
     origin_search_list = search_list
@@ -67,10 +66,11 @@ def prune_wrapper_single(search_list,
         activations = None
         torch.cuda.empty_cache()
         logger.info(f'Start searching for lora:{search_list}')
-        configs[peft_type] = search_list
+        args.lora = search_list
+        configs = PEFTSearchSpace(args).get_config()
         model = PEFTModel(configs, dataset).half()
         res, gradients, activations = model.run()
-        logger.info(f'Result {res} for {peft_type} {search_list}')
+        logger.info(f'Mid-Result {res} for {peft_type} {search_list}')
 
         idx, idt = prune_model(
             model.model,
@@ -83,3 +83,9 @@ def prune_wrapper_single(search_list,
             activations=activations)
         logger.info(f'Pruned layer: {idx, idt}')
         search_list[int(idx)] = 0
+
+    model = None
+    gradients = None
+    activations = None
+    torch.cuda.empty_cache()
+    return search_list

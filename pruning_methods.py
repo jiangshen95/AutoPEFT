@@ -17,8 +17,14 @@ def get_trainable_parameters(model):
     return names
 
 
-def group_parameters_by_prefix(names, opts=[], print_names=False, task_name=''):
+def group_parameters_by_prefix(names, opts=[], print_names=False, task_name='', model_name=''):
     """Group parameters based on prefixes"""
+    if model_name == 'roberta':
+        v_name = 'query.'
+        q_name = 'value.'
+    else:
+        v_name = 'q_proj.'
+        q_name = 'v_proj.'
     groups = {}
     names = [
         name for name in names
@@ -27,7 +33,7 @@ def group_parameters_by_prefix(names, opts=[], print_names=False, task_name=''):
     ]
     for name in names:
         prefix = name.split(task_name)[0]
-        prefix = prefix.replace('q_proj.', '').replace('v_proj.', '')
+        prefix = prefix.replace(v_name, '').replace(q_name, '')
         if prefix in groups:
             groups[prefix].append(name)
         else:
@@ -48,7 +54,7 @@ def find_group_with_most_small_values(groups,
                                       activations=None):
     """Find groups with the smallest values or smallest summed gradients"""
     group_values = []
-
+    prefix = 'module.'
     if p_method == 'zeros':
         for group, names in groups.items():
             num_zeros = sum(
@@ -75,8 +81,9 @@ def find_group_with_most_small_values(groups,
             raise ValueError(
                 "Gradients must be provided for 'gradient' p_method")
         for group, names in groups.items():
+            # print(names)
             total_gradient = sum(
-                np.abs(gradients[name]).sum().item() for name in names)
+                np.abs(gradients[prefix + name]).sum().item() for name in names)
             group_values.append((group, names, total_gradient))
 
     elif p_method == 'snip':
@@ -91,14 +98,14 @@ def find_group_with_most_small_values(groups,
         # Normalize the gradients
         norm_gradients = {}
         for name, grad in gradient_magnitudes.items():
-            weight = model.state_dict()[name].cpu().numpy(
+            weight = model.state_dict()[name[7:]].cpu().numpy(
             )  # Convert weight to numpy array
             norm_gradients[name] = grad * weight
 
         # Sum normalized gradients for each group
         for group, names in groups.items():
             total_snip = sum(
-                norm_gradients[name].sum().item() for name in names)
+                norm_gradients[prefix+name].sum().item() for name in names)
             group_values.append((group, names, total_snip))
 
     elif p_method == 'grasp':
@@ -121,7 +128,7 @@ def find_group_with_most_small_values(groups,
         # Sum normalized Hessian-gradient products for each group
         for group, names in groups.items():
             total_grasp = sum(
-                norm_hessian_grad_products[name].sum().item() for name in names)
+                norm_hessian_grad_products[prefix + name].sum().item() for name in names)
             group_values.append((group, names, total_grasp))
 
     elif p_method == 'activation':
@@ -131,7 +138,7 @@ def find_group_with_most_small_values(groups,
         for group, names in groups.items():
             activation_scores = []
             for name in names:
-                activation = activations["module." + name]
+                activation = activations[prefix + name]
                 # 计算激活值的重要性评分，可以使用不同的统计量，这里用平均值
                 activation_score = activation.mean().item()
                 activation_scores.append(activation_score)
@@ -185,9 +192,10 @@ def prune_model(model,
                 hessians=None,
                 activations=None):
     """Prune the model's parameters"""
+    modelname = model.config.model_type
     names = get_trainable_parameters(model)
     groups = group_parameters_by_prefix(
-        names, opts=opts, print_names=print_names, task_name=task_name)
+        names, opts=opts, print_names=print_names, task_name=task_name, model_name = modelname)
     sorted_groups = find_group_with_most_small_values(groups, model, p_method,
                                                       top_p, gradients,
                                                       activations)
@@ -196,9 +204,9 @@ def prune_model(model,
         for group_info in sorted_groups:
             group, _, small_values = group_info
             print(f"Pruned group: {group}, with {small_values} small values.")
-    match = re.search('layers.(\d+)', sorted_groups[0][0])
+    match = re.search(r'layer(s)?\.(\d+)', sorted_groups[0][0])
     if match:
-        layer_number = match.group(1)
+        layer_number = match.group(2)
     else:
         layer_number = -1
     if 'lora' in sorted_groups[0][0]:
