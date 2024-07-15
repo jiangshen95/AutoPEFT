@@ -10,7 +10,7 @@ from src.dataset_wrapper import PEFTDataset
 import torch
 from pruning_methods import prune_model
 from utils.gpu_memory_plot import get_free_gpu_memory
-from src.controllers.baseline_wrapper import baseline_wrapper_single, prune_wrapper_single
+from src.controllers.baseline_wrapper import baseline_wrapper_single, prune_wrapper_single, baseline_wrapper_double, prune_wrapper_double
 
 import argparse
 import logging
@@ -18,6 +18,8 @@ import time
 from copy import deepcopy
 import os
 import json
+import random
+import numpy as np
 
 logger = logging.getLogger('controller')
 logger.setLevel(logging.INFO)  # 设置日志级别
@@ -59,10 +61,12 @@ for ds_name in to_load:
     dataset = PEFTDataset(
         'glue', ds_name, train_size=2000, test_size=400).get_dataset()
     args = parser.parse_args(args=[])
+    args.lora = [32] * 24
     args.adapter = [128] * 24
     args.epochs = 3
-    res_base = baseline_wrapper_single(
-        search_list=[128] * 24,
+    res_base = baseline_wrapper_double(
+        search_list1=args.lora,
+        search_list2=args.adapter,
         ds_name=ds_name,
         dataset=dataset,
         logger=logger,
@@ -71,12 +75,29 @@ for ds_name in to_load:
     res_methods = {}
     res_methods['base'] = res_base
     for prune_method in prune_methods:
+        # 设置Python的随机种子
+        random.seed(42)
+
+        # 设置NumPy的随机种子
+        np.random.seed(42)
+
+        # 设置PyTorch的随机种子
+        torch.manual_seed(42)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed(42)
+            torch.cuda.manual_seed_all(42)  # 为所有GPU设置种子
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
+        
+        
         args = parser.parse_args(args=[])
         args.adapter = [128] * 24
+        args.lora = [32] * 24
         args.epochs = 1
         logger.info(f"Start testing {ds_name} with {prune_method}")
-        res_search_list = prune_wrapper_single(
-            search_list=args.adapter,
+        res_search_list1, res_search_list2 = prune_wrapper_double(
+            search_list1=args.lora,
+            search_list2=args.adapter,
             ds_name=ds_name,
             dataset=dataset,
             logger=logger,
@@ -84,16 +105,18 @@ for ds_name in to_load:
             prune_method=prune_method,
             prune_turn=6)
         args = parser.parse_args(args=[])
-        args.adapter = res_search_list
+        args.lora = res_search_list1
+        args.adapter = res_search_list2
         args.epochs = 3
-        res = baseline_wrapper_single(
-            search_list=res_search_list,
+        res = baseline_wrapper_double(
+            search_list1=args.lora,
+            search_list2=args.adapter,
             ds_name=ds_name,
             dataset=dataset,
             logger=logger,
             args=args,
         )
         res_methods[prune_method] = res
-    with open('results/final-adapter.json', 'a') as file:
+    with open('results/final-lora-adapter.json', 'a') as file:
         file.write(ds_name + '\n')
         file.write(json.dumps(res_methods) + '\n')

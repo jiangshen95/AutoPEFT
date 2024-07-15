@@ -17,6 +17,8 @@ Hello AutoPEFT!
 - 使用AUC
 - debug训练
 - 表格
+- 数据集保存到本地
+- 使用config/*.yaml来存储运行设置
 
 ## 评估
 

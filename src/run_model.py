@@ -30,21 +30,6 @@ from src.dataset_wrapper import PEFTDataset
 from src.peft_search_space import PEFTSearchSpace
 from sklearn.metrics import f1_score
 from trainer_with_grad import TrainerWithGrad
-import random
-
-# 设置Python的随机种子
-random.seed(42)
-
-# 设置NumPy的随机种子
-np.random.seed(42)
-
-# 设置PyTorch的随机种子
-torch.manual_seed(42)
-if torch.cuda.is_available():
-    torch.cuda.manual_seed(42)
-    torch.cuda.manual_seed_all(42)  # 为所有GPU设置种子
-torch.backends.cudnn.deterministic = True
-torch.backends.cudnn.benchmark = False
 
 
 def print_trainable_parameters(model):
@@ -92,7 +77,7 @@ class PEFTModel:
         self.trainer = None
         # self.model_name = "meta-llama/Meta-Llama-3-8B"
         # self.model_name = "roberta-base"
-        self.model_name="roberta-large"
+        self.model_name = "roberta-large"
         self.task_name = "mytask"
 
         self.configs = configs
@@ -102,6 +87,7 @@ class PEFTModel:
 
         self.instructs = 0
         self.epochs = 1
+        self.lr = 2e-5
         self.gradients = {}
 
         # calculate the number of labels
@@ -126,21 +112,18 @@ class PEFTModel:
             adapter_config = SeqBnConfig(
                 reduction_factor=next(
                     x for x in configs["adapter"]["bn"] if x != 0),)
-        if configs.get("lora"):
+        if configs.get("LORA"):
             lora_config = LoRAConfig(
-                r=next(x for x in configs["lora"]["ranks"] if x != 0),
-                alpha=next(x for x in configs["lora"]["ranks"] if x != 0),
+                r=next(x for x in configs["LORA"] if x != 0),
+                alpha=next(x for x in configs["LORA"] if x != 0),
                 dropout=0.1,
-                leave_out=[
-                    i for i, x in enumerate(configs["lora"]["ranks"]) if x == 0
-                ],
+                leave_out=[i for i, x in enumerate(configs["LORA"]) if x == 0],
             )
-        if configs.get("adapter"):
+        if configs.get("ADAPTER"):
             adapter_config = SeqBnConfig(
-                reduction_factor=next(
-                    x for x in configs["adapter"]["bn"] if x != 0),
+                reduction_factor=next(x for x in configs["ADAPTER"] if x != 0),
                 leave_out=[
-                    i for i, x in enumerate(configs["adapter"]["bn"]) if x == 0
+                    i for i, x in enumerate(configs["ADAPTER"]) if x == 0
                 ],
             )
 
@@ -157,38 +140,38 @@ class PEFTModel:
         self.model.train_adapter("my_module")
         # self.model = self.model.half()
 
-        if configs.get("lora"):
+        if configs.get("LORA"):
             names = get_trainable_parameters(self.model)
             groups = group_parameters_by_prefix(
                 names, opts="lora", task_name="my_module")
             sorted_groups = sorted(groups.items())
             sorted_groups = [name[1] for name in sorted_groups]
 
-            ranks = [r for r in configs["lora"]["ranks"] if r != 0]
+            ranks = [r for r in configs["LORA"] if r != 0]
             for group, r in zip(sorted_groups, ranks):
                 self.set_peft_group(group, "set", r)
 
-        if configs.get("adapter"):
+        if configs.get("ADAPTER"):
             names = get_trainable_parameters(self.model)
             groups = group_parameters_by_prefix(
                 names, opts="adapter", task_name="my_module")
             sorted_groups = sorted(groups.items())
             sorted_groups = [name[1] for name in sorted_groups]
 
-            ranks = [r for r in configs["adapter"]["bn"] if r != 0]
+            ranks = [r for r in configs["ADAPTER"] if r != 0]
             for group, r in zip(sorted_groups, ranks):
                 self.set_peft_group(group, "set", r)
 
-        if configs.get('epochs'):
-            self.epochs = configs['epochs']
+        if configs.get('EPOCHS'):
+            self.epochs = configs['EPOCHS']
         else:
             self.epochs = 1
 
-        if configs.get("instructs"):
+        if configs.get("INSTRUCTS"):
             self.instructs = 1
 
-        if configs.get("loss"):
-            self.loss_type = configs["loss"]
+        if configs.get("LOSS"):
+            self.loss_type = configs["LOSS"]
             if (self.loss_type == "cross_entropy"):
                 self.loss_fn = nn.CrossEntropyLoss()
             elif (self.loss_type == "mse"):
@@ -198,6 +181,9 @@ class PEFTModel:
         else:
             self.loss_type = "cross_entropy"
             self.loss_fn = nn.CrossEntropyLoss()
+
+        if configs.get("LEARNING_RATE"):
+            self.lr = float(configs["LEARNING_RATE"])
 
     def run(self):
         """tokenize the dataset and train the model"""
@@ -249,6 +235,7 @@ class PEFTModel:
             warmup_steps=10,
             weight_decay=0.01,
             logging_dir="./logs",
+            learning_rate=self.lr,
             # evaluation_strategy="epoch",
         )
 
@@ -391,6 +378,7 @@ if __name__ == "__main__":
     parser.add_argument("--base_lora", type=int)
     parser.add_argument("--base_adapter", type=int)
     parser.add_argument("--epochs", type=int)
+    parser.add_argument("--lr", type=float)
     parser.add_argument("--instructs")
     args = parser.parse_args()
 

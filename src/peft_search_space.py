@@ -4,7 +4,7 @@ This config input is a args parser. The output is a PEFTSearchSpace object
 main.py will only use the PEFTSearchSpace object to generate the model structure
 """
 
-MAX_MODEL_LAYER = 12
+MAX_MODEL_LAYER = 24
 
 
 class PEFTSearchSpace:
@@ -58,6 +58,8 @@ class PEFTSearchSpace:
                 self.configs["adapter"]["bn"].extend([0] * num_zeros)
         if hasattr(args, "epochs") and args.epochs:
             self.configs["epochs"] = args.epochs
+        if hasattr(args, "lr") and args.lr:
+            self.configs["lr"] = args.lr
         if hasattr(args, "instructs"):
             self.configs["instructs"] = 1  # need instruct for llama
 

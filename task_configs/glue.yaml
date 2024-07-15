@@ -1,0 +1,30 @@
+DATASETS:
+  - TASK_NAME: qnli
+    LOSS: cross_entropy
+    DATASET_NAME: glue
+  - TASK_NAME: rte
+    LOSS: cross_entropy
+    DATASET_NAME: glue
+  - TASK_NAME: wnli
+    LOSS: cross_entropy
+    DATASET_NAME: glue
+  - TASK_NAME: cola
+    LOSS: cross_entropy
+    DATASET_NAME: glue
+  - TASK_NAME: sst2
+    LOSS: cross_entropy
+    DATASET_NAME: glue
+  - TASK_NAME: mrpc
+    LOSS: cross_entropy
+    DATASET_NAME: glue
+  - TASK_NAME: qqp
+    LOSS: cross_entropy
+    DATASET_NAME: glue
+
+PRUNE_METHODS:
+  - zeros
+  - values_below_threshold
+  - snip
+  - minimum_weight
+  - activation
+  - gradient

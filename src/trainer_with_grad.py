@@ -64,7 +64,7 @@ class TrainerWithGrad:
         print('finished init')
 
     def train(self):
-        optimizer = AdamW(self.model.parameters(), lr=1e-5)
+        optimizer = AdamW(self.model.parameters(), lr=self.args.learning_rate)
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
             num_warmup_steps=0,
@@ -172,6 +172,7 @@ class TrainerWithGrad:
                     self.dummy_input = inputs
                 batch['label'] = batch['label'].to(self.device)
                 outputs = self.model(**inputs)
+                print(outputs)
                 loss_fn = CrossEntropyLoss()
                 loss = loss_fn(outputs.logits, batch['label'])
                 total_loss += loss.item()

@@ -1,0 +1,30 @@
+LORA:
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+  - 32
+EPOCHS: 5
+PRUNE_EPOCHS: 1
+PRUNE_TURN: 6
+LEARNING_RATE: 1e-6
+BACK_BONE: roberta-large

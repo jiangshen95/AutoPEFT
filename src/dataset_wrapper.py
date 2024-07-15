@@ -29,6 +29,8 @@ class PEFTDataset():
         else:
             dataset = load_dataset(dataset_name)
 
+        dataset = dataset.shuffle(seed=42)
+
         instruct_string = ""
         if (dataset_name == "glue"):
             if (task_name == "cola"):

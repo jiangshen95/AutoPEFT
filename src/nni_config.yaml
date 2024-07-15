@@ -1,0 +1,14 @@
+experimentName: autopeft
+trialConcurrency: 1
+maxExperimentDuration: 1h
+maxTrialNumber: 10
+searchSpaceFile: nni_search_space.json
+useAnnotation: false
+trialCommand: python nni_opt.py
+trialCodeDirectory: .
+trialGpuNumber: 4
+tuner:
+  name: TPE
+trainingService:
+  platform: local
+  use_active_gpu: True

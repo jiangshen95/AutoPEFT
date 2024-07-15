@@ -17,7 +17,11 @@ def get_trainable_parameters(model):
     return names
 
 
-def group_parameters_by_prefix(names, opts=[], print_names=False, task_name='', model_name=''):
+def group_parameters_by_prefix(names,
+                               opts=[],
+                               print_names=False,
+                               task_name='',
+                               model_name=''):
     """Group parameters based on prefixes"""
     if model_name == 'roberta':
         v_name = 'query.'
@@ -57,34 +61,62 @@ def find_group_with_most_small_values(groups,
     prefix = 'module.'
     if p_method == 'zeros':
         for group, names in groups.items():
+            total_params = sum(
+                model.state_dict()[name].numel() for name in names)
             num_zeros = sum(
                 (model.state_dict()[name] == 0).sum().item() for name in names)
-            group_values.append((group, names, num_zeros))
+            ratio_zeros = num_zeros / total_params if total_params > 0 else 0
+            group_values.append((group, names, ratio_zeros))
 
     elif p_method == 'values_below_threshold':
-        threshold = 0.000001  # 可以根据需要调整阈值
+        threshold = 0.000001  # Adjust the threshold as needed
         for group, names in groups.items():
+            total_params = sum(
+                model.state_dict()[name].numel() for name in names)
             num_values_below_threshold = sum(
                 (model.state_dict()[name].abs() < threshold).sum().item()
                 for name in names)
-            group_values.append((group, names, num_values_below_threshold))
+            ratio_below_threshold = num_values_below_threshold / total_params if total_params > 0 else 0
+            group_values.append((group, names, ratio_below_threshold))
 
     elif p_method == 'minimum_weight':
         for group, names in groups.items():
+            total_params = sum(
+                model.state_dict()[name].numel() for name in names)
             min_weight = min((model.state_dict()[name].pow(2).sum() /
                               model.state_dict()[name].numel()).item()
                              for name in names)
-            group_values.append((group, names, min_weight))
+            avg_min_weight = min_weight / total_params if total_params > 0 else 0
+            group_values.append((group, names, avg_min_weight))
 
     elif p_method == 'gradient':
         if gradients is None:
             raise ValueError(
                 "Gradients must be provided for 'gradient' p_method")
         for group, names in groups.items():
-            # print(names)
+            total_params = sum(
+                model.state_dict()[name].numel() for name in names)
             total_gradient = sum(
                 np.abs(gradients[prefix + name]).sum().item() for name in names)
-            group_values.append((group, names, total_gradient))
+            avg_gradient = total_gradient / total_params if total_params > 0 else 0
+            group_values.append((group, names, avg_gradient))
+
+    elif p_method == 'activation':
+        if activations is None:
+            raise ValueError(
+                "Activations must be provided for 'activation' p_method")
+        for group, names in groups.items():
+            activation_scores = []
+            total_params = sum(
+                model.state_dict()[name].numel() for name in names)
+            for name in names:
+                activation = activations[prefix + name]
+                activation_score = activation.mean().item()
+                activation_scores.append(activation_score)
+                break
+            avg_activation_score = sum(
+                activation_scores) / total_params if total_params > 0 else 0
+            group_values.append((group, names, avg_activation_score))
 
     elif p_method == 'snip':
         if gradients is None:
@@ -98,53 +130,18 @@ def find_group_with_most_small_values(groups,
         # Normalize the gradients
         norm_gradients = {}
         for name, grad in gradient_magnitudes.items():
-            weight = model.state_dict()[name[7:]].cpu().numpy(
-            )  # Convert weight to numpy array
+            weight = model.state_dict()[
+                name[7:]].cpu().numpy()  # Convert weight to numpy array
             norm_gradients[name] = grad * weight
 
         # Sum normalized gradients for each group
         for group, names in groups.items():
+            total_params = sum(
+                model.state_dict()[name].numel() for name in names)
             total_snip = sum(
-                norm_gradients[prefix+name].sum().item() for name in names)
-            group_values.append((group, names, total_snip))
-
-    elif p_method == 'grasp':
-        if gradients is None or hessians is None:
-            raise ValueError(
-                "Gradients and Hessians must be provided for 'grasp' p_method")
-
-        # Calculate the Hessian-gradient products
-        hessian_grad_products = {}
-        for name in gradients:
-            hessian_grad_products[name] = gradients[name] * hessians[name]
-
-        # Normalize the Hessian-gradient products
-        norm_hessian_grad_products = {}
-        for name, hg_product in hessian_grad_products.items():
-            weight = model.state_dict()[name].cpu().numpy(
-            )  # Convert weight to numpy array
-            norm_hessian_grad_products[name] = hg_product * weight
-
-        # Sum normalized Hessian-gradient products for each group
-        for group, names in groups.items():
-            total_grasp = sum(
-                norm_hessian_grad_products[prefix + name].sum().item() for name in names)
-            group_values.append((group, names, total_grasp))
-
-    elif p_method == 'activation':
-        if activations is None:
-            raise ValueError(
-                "Activations must be provided for 'activation' p_method")
-        for group, names in groups.items():
-            activation_scores = []
-            for name in names:
-                activation = activations[prefix + name]
-                # 计算激活值的重要性评分，可以使用不同的统计量，这里用平均值
-                activation_score = activation.mean().item()
-                activation_scores.append(activation_score)
-                break
-            total_activation_score = sum(activation_scores)
-            group_values.append((group, names, total_activation_score))
+                norm_gradients[prefix + name].sum().item() for name in names)
+            avg_snip = total_snip / total_params if total_params > 0 else 0
+            group_values.append((group, names, avg_snip))
 
     sorted_groups = sorted(
         group_values,
@@ -195,7 +192,11 @@ def prune_model(model,
     modelname = model.config.model_type
     names = get_trainable_parameters(model)
     groups = group_parameters_by_prefix(
-        names, opts=opts, print_names=print_names, task_name=task_name, model_name = modelname)
+        names,
+        opts=opts,
+        print_names=print_names,
+        task_name=task_name,
+        model_name=modelname)
     sorted_groups = find_group_with_most_small_values(groups, model, p_method,
                                                       top_p, gradients,
                                                       activations)
@@ -210,7 +211,7 @@ def prune_model(model,
     else:
         layer_number = -1
     if 'lora' in sorted_groups[0][0]:
-        layer_type = 'lora'
+        layer_type = 'LORA'
     else:
-        layer_type = 'adapter'
+        layer_type = 'ADAPTER'
     return layer_number, layer_type

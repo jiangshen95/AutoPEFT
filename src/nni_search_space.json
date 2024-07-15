@@ -1,0 +1,10 @@
+{
+    "base_lora": {
+        "_type": "choice",
+        "_value": [24, 32, 64, 128]
+    },
+    "lr": {
+        "_type": "loguniform",
+        "_value": [0.00001, 0.01]
+    },
+}
