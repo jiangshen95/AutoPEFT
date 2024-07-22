@@ -23,8 +23,34 @@ LORA:
   - 32
   - 32
   - 32
+LORA_LR: 1e-6
+ADAPTER:
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+  - 128
+ADAPTER_LR: 1e-7
 EPOCHS: 3
 PRUNE_EPOCHS: 1
 PRUNE_TURN: 6
-LORA_LR: 1e-5
 BACK_BONE: roberta-large

@@ -182,8 +182,15 @@ class PEFTModel:
             self.loss_type = "cross_entropy"
             self.loss_fn = nn.CrossEntropyLoss()
 
-        if configs.get("LEARNING_RATE"):
-            self.lr = float(configs["LEARNING_RATE"])
+        if configs.get("LORA_LR"):
+            self.lora_lr = float(configs["LORA_LR"])
+        else:
+            self.lora_lr=1e-5
+
+        if configs.get("ADAPTER_LR"):
+            self.adapter_lr = float(configs["ADAPTER_LR"])
+        else:
+            self.adapter_lr=1e-6
 
     def run(self):
         """tokenize the dataset and train the model"""
@@ -235,8 +242,8 @@ class PEFTModel:
             warmup_steps=10,
             weight_decay=0.01,
             logging_dir="./logs",
-            learning_rate=self.lr,
-            # evaluation_strategy="epoch",
+            learning_rate={'lora':self.lora_lr, 'adapter':self.adapter_lr,},
+            evaluation_strategy="epoch",
         )
 
         def compute_metrics(pred):

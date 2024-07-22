@@ -50,6 +50,7 @@ class TrainerWithGrad:
         self.epoch_num = args.num_train_epochs
         self.train_batch_size = args.per_device_train_batch_size
         self.eval_batch_size = args.per_device_eval_batch_size
+        self.eval_strategy = args.evaluation_strategy
 
         self.dummy_input = None
 
@@ -64,7 +65,27 @@ class TrainerWithGrad:
         print('finished init')
 
     def train(self):
-        optimizer = AdamW(self.model.parameters(), lr=self.args.learning_rate)
+        # TODO
+        optimizer_grouped_parameters = [{
+            "params": [
+                param for name, param in self.model.named_parameters()
+                if "lora" in name
+            ],
+            "lr": self.args.learning_rate['lora'],
+        }, {
+            "params": [
+                param for name, param in self.model.named_parameters()
+                if "adapter" in name
+            ],
+            "lr": self.args.learning_rate['adapter'],
+        }, {
+            "params": [
+                param for name, param in self.model.named_parameters()
+                if 'heads' in name
+            ],
+            "lr": 1e-5
+        }]
+        optimizer = AdamW(optimizer_grouped_parameters)
         scheduler = get_linear_schedule_with_warmup(
             optimizer,
             num_warmup_steps=0,
@@ -139,6 +160,8 @@ class TrainerWithGrad:
                 optimizer.step()
                 scheduler.step()
                 self.model.zero_grad()
+            if self.eval_strategy == 'epoch':
+                self.evaluate()
 
         # for module, activation in activations.items():
         #     print(f"Activation for {module}: {activation[0]}")
@@ -172,7 +195,6 @@ class TrainerWithGrad:
                     self.dummy_input = inputs
                 batch['label'] = batch['label'].to(self.device)
                 outputs = self.model(**inputs)
-                print(outputs)
                 loss_fn = CrossEntropyLoss()
                 loss = loss_fn(outputs.logits, batch['label'])
                 total_loss += loss.item()

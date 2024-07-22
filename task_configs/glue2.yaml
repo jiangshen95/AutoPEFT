@@ -1,0 +1,12 @@
+DATASETS:
+  - TASK_NAME: qqp
+    LOSS: cross_entropy
+    DATASET_NAME: glue
+
+PRUNE_METHODS:
+  - zeros
+  - values_below_threshold
+  - snip
+  - minimum_weight
+  - activation
+  - gradient

@@ -85,7 +85,7 @@ for ds_meta in task_configs['DATASETS']:
     dataset = PEFTDataset(
         dataset_name, task_name, train_size=2000, test_size=400).get_dataset()
 
-    #reset_seed()
+    reset_seed()
     model = PEFTModel(configs, dataset).half()
     res, _, _ = model.run()
     logger.info(f'Final-Result {res} for {configs[peft_type]}')
@@ -102,7 +102,7 @@ for ds_meta in task_configs['DATASETS']:
         origin_epochs = configs['EPOCHS']
         configs['EPOCHS'] = configs['PRUNE_EPOCHS']
         for _ in range(int(configs['PRUNE_TURN'])):
-            #reset_seed()
+            reset_seed()
             model = None
             gradients = None
             activations = None
@@ -139,6 +139,8 @@ for ds_meta in task_configs['DATASETS']:
         logger.info(f'Final-Result {res} for {configs[peft_type]}')
         res_methods[prune_method] = res
 
-    with open('results/final-adapter.json', 'a') as file:
-        file.write(dataset_name + '\n')
+    with open(
+            f'results/{os.path.splitext(os.path.basename(args.method))[0]}_{os.path.splitext(os.path.basename(args.task))[0]}.json',
+            'a') as file:
+        file.write(dataset_name + '_' + task_name + '\n')
         file.write(json.dumps(res_methods) + '\n')
