@@ -35,11 +35,13 @@ class TrainerWithGrad:
                  compute_metrics,
                  callbacks,
                  tokenizer,
-                 loss_fn=CrossEntropyLoss()):
-        self.device = torch.device(
-            "cuda" if torch.cuda.is_available() else "cpu")
+                 loss_fn=CrossEntropyLoss(),
+                 device_ids=[0, 1, 2, 3]):
+        self.device = torch.device("cuda:" +
+                                   ','.join(map(str, device_ids)) if torch.cuda
+                                   .is_available() else "cpu")
         self.model = torch.nn.DataParallel(
-            model.to(self.device), device_ids=[0, 1, 2, 3])
+            model.to(self.device), device_ids=device_ids)
         self.args = args
         self.train_dataset = train_dataset
         self.eval_dataset = eval_dataset
@@ -92,6 +94,7 @@ class TrainerWithGrad:
             num_training_steps=len(self.train_dataloader) * 3)
 
         activations = {}
+        intermediate_results = []
 
         # 定义钩子函数
         def save_activation(name):
@@ -161,14 +164,14 @@ class TrainerWithGrad:
                 scheduler.step()
                 self.model.zero_grad()
             if self.eval_strategy == 'epoch':
-                self.evaluate()
+                intermediate_results.append(self.evaluate())
 
         # for module, activation in activations.items():
         #     print(f"Activation for {module}: {activation[0]}")
         for hook in hooks:
             hook.remove()
 
-        return gradients, activations
+        return gradients, activations, intermediate_results
 
     def evaluate(self):
         self.model.eval()

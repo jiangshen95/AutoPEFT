@@ -29,5 +29,5 @@ PRUNE_METHODS:
   - activation
   - gradient
 
-TRAIN_SIZE: 2000
-TEST_SIZE: 600
+TRAIN_SIZE: 1.0
+TEST_SIZE: 1.0

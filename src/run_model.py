@@ -29,7 +29,7 @@ from pruning_methods import get_trainable_parameters, group_parameters_by_prefix
 from src.dataset_wrapper import PEFTDataset
 from src.peft_search_space import PEFTSearchSpace
 from sklearn.metrics import f1_score
-from trainer_with_grad import TrainerWithGrad
+from src.trainer_with_grad import TrainerWithGrad
 
 
 def print_trainable_parameters(model):
@@ -185,14 +185,14 @@ class PEFTModel:
         if configs.get("LORA_LR"):
             self.lora_lr = float(configs["LORA_LR"])
         else:
-            self.lora_lr=1e-5
+            self.lora_lr = 1e-5
 
         if configs.get("ADAPTER_LR"):
             self.adapter_lr = float(configs["ADAPTER_LR"])
         else:
-            self.adapter_lr=1e-6
+            self.adapter_lr = 1e-6
 
-    def run(self):
+    def run(self, device_ids=[0, 1, 2, 3]):
         """tokenize the dataset and train the model"""
         assert self.dataset is not None
         assert self.model is not None
@@ -242,7 +242,10 @@ class PEFTModel:
             warmup_steps=10,
             weight_decay=0.01,
             logging_dir="./logs",
-            learning_rate={'lora':self.lora_lr, 'adapter':self.adapter_lr,},
+            learning_rate={
+                'lora': self.lora_lr,
+                'adapter': self.adapter_lr,
+            },
             evaluation_strategy="epoch",
         )
 
@@ -263,6 +266,7 @@ class PEFTModel:
             callbacks=[GradientCaptureCallback(self)],
             tokenizer=self.tokenizer,
             loss_fn=self.loss_fn,
+            device_ids=device_ids,
         )
 
         # Register hooks to capture gradients
@@ -272,9 +276,10 @@ class PEFTModel:
                     lambda grad, name=name: self.gradients.update(
                         {name: grad.clone().cpu().detach().numpy()}))
 
-        gradients, activations = self.trainer.train()
+        gradients, activations, intermediate_results = self.trainer.train()
         metrics = self.trainer.evaluate()
         print(metrics)
+        metrics['intermediate_results'] = intermediate_results
 
         return metrics, gradients, activations
 

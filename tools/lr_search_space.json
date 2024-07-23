@@ -1,0 +1,3 @@
+{
+    "lr":{"_type": "uniform", "_value": [1e-6, 1e-4]}
+}

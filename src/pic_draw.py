@@ -4,6 +4,9 @@ import os
 import numpy as np
 from collections import defaultdict
 
+json_path = 'results/lora_low_lr.json'
+save_path = 'results/lora32_full'
+
 def plot_aggregated_metrics(file_path, output_dir='pic'):
     os.makedirs(output_dir, exist_ok=True)
 
@@ -56,7 +59,7 @@ def plot_aggregated_metrics(file_path, output_dir='pic'):
     plt.close()
 
 # 示例调用
-plot_aggregated_metrics('/home/autopeft/AutoPEFT/results/adapter_lora.json', '/home/autopeft/AutoPEFT/results/pic-adapter-LoRA')
+plot_aggregated_metrics(json_path, save_path)
 
 def plot_metrics(file_path, output_dir='pic'):
     os.makedirs(output_dir, exist_ok=True)
@@ -109,4 +112,4 @@ def plot_metrics(file_path, output_dir='pic'):
         plt.close()
 
 # 示例调用
-plot_metrics('/home/autopeft/AutoPEFT/results/adapter128.json', '/home/autopeft/AutoPEFT/results/pic-adapter')
+plot_metrics(json_path, save_path)

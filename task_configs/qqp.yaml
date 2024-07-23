@@ -1,0 +1,12 @@
+DATASETS:
+  - TASK_NAME: qqp
+    LOSS: cross_entropy
+    DATASET_NAME: glue
+
+PRUNE_METHODS:
+  - minimum_weight
+  - activation
+  - gradient
+
+TRAIN_SIZE: 2000
+TEST_SIZE: 600

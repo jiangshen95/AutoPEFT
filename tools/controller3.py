@@ -143,11 +143,11 @@ for ds_meta in task_configs['DATASETS']:
             activations = None
             torch.cuda.empty_cache()
 
-        configs['EPOCHS'] = origin_epochs
-        model = PEFTModel(configs, dataset).half()
-        res, _, _ = model.run(args.device)
-        logger.info(f'Val-Result {res} for {configs[peft_type]}')
-        res_methods[prune_method] = res
+            configs['EPOCHS'] = origin_epochs
+            model = PEFTModel(configs, dataset).half()
+            res, _, _ = model.run(args.device)
+            logger.info(f'Val-Result {res} for {configs[peft_type]}')
+            res_methods[prune_method] = res
 
     with open(f'results/{args.result}', 'a') as file:
         file.write(dataset_name + '_' + task_name + '\n')

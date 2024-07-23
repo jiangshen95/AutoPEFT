@@ -11,14 +11,11 @@ Hello AutoPEFT!
 - 实现架构搜索模块
 
 ## TODO
-- 构建评估 Benchmark
-- prefix-tuning
-- verbose
-- 使用AUC
-- debug训练
-- 表格
-- 数据集保存到本地
-- 使用config/*.yaml来存储运行设置
+- 添加更多数据集（S3PET）
+- 修复acc突变，更好地通过种子初始化模型
+- 通过nni优化rank和bottleneck
+
+- 通过softmax进行剪枝策略混合
 
 ## 评估
 
@@ -41,3 +38,11 @@ LLM 微调性能评估 Benchmark 构建，包含 NLG (Neural language generation
 - 对lora和adapter分别完全剪枝，找到在各个数据集上比较适合的剪枝数量
 - 对lora和adapter用各方法剪枝，剪枝数量为手动设定，在GLUE数据集上
 - lora和adapter同时加入模型，同时剪枝，使用激活值方法
+
+## 运行
+
+- 运行nni
+`nnictl create --config tools/config.yml --port 8088`
+
+- 运行测试
+`python tools/new_controller.py --method method_configs/lora32.yaml --task task_configs/glue.yaml --result <sth>.json --device 0`
